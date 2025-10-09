@@ -26,7 +26,8 @@ extern "C" {
 int runner_lammps_api_version();
 void runner_lammps_interface_init(const char *path, int *npath, double *cutoff, double *cfenergy,
                                   double *cflength, int *nnp_generation, int *num_committee_members,
-                                  bool *l_hirshfeld_vdw, bool *ltwo_body, bool *lcheck_extrap, int *rank, int *size);
+                                  bool *l_hirshfeld_vdw, bool *ltwo_body, bool *lcheck_extrap,
+                                  int *rank, int *size);
 
 void runner_lammps_interface_transfer_atoms_and_neighbor_lists(
     int *nlocal, int *nghost, int *atomic_numbers, int *inum, int *sum_num_neigh, int *ilist,
@@ -67,15 +68,13 @@ void runner_interface_compute_charges_4g(int *num_atoms, double *total_charge,
 void runner_interface_finalize_step();
 
 void runner_interface_short_range_4g(int *nlocal, int *nghost, int *inum, int *nmax, int *ilist,
-                                     double *, double *energy,
-                                     double *forces, double *d_energy_d_strain,
-                                     double *d_energy_d_q);
+                                     double *, double *energy, double *forces,
+                                     double *d_energy_d_strain, double *d_energy_d_q);
 
 void runner_interface_evaluate_electrostatics_4g_part_1(int *nglobal, double *d_energy_dq,
                                                         double *energy, double *forces,
                                                         double *d_energy_d_strain,
-                                                        double *lagrange_charges,
-							int icomm);
+                                                        double *lagrange_charges, int icomm);
 
 void runner_interface_evaluate_electrostatics_4g_part_2(int *nlocal, int *nghost,
                                                         int *committee_member_idx,
@@ -93,8 +92,7 @@ void runner_interface_extrapolation_warnings(char **c_ptr_extrap_msg, long *len_
 
 void runner_interface_dealloc_extrapolation_warnings();
 
-void runner_interface_extrapolation_count(long *extraplation_count,
-                                          long *total_extrapolation_count,
+void runner_interface_extrapolation_count(long *extraplation_count, long *total_extrapolation_count,
                                           bool *lreset);
 }
 
@@ -202,8 +200,8 @@ class PairRuNNer : public Pair {
    * @param z_global The atomic numbers of all `natoms` atoms. Only populated on
    *   the root process.
    */
-  void pack_structure(int rank, int size, int natoms, int inum, int *ilist, tagint *tag,
-                      double **x, int *runner_types, double *&xyz_global, int *&z_global);
+  void pack_structure(int rank, int size, int natoms, int inum, int *ilist, tagint *tag, double **x,
+                      int *runner_types, double *&xyz_global, int *&z_global);
 
   /**
    * Pack the values of a single atomic property from the local atoms
@@ -220,8 +218,8 @@ class PairRuNNer : public Pair {
    * @param global_property Collected property values for all `natoms` atoms in
    *   the simulation box. Only populated on the root MPI process.
    */
-  void pack_atomic_property(int rank, int size, int natoms, int inum, int *ilist,
-                            tagint *tag, double *local_property, double *&global_property);
+  void pack_atomic_property(int rank, int size, int natoms, int inum, int *ilist, tagint *tag,
+                            double *local_property, double *&global_property);
 
   /**
    * Distribute the values of a single atomic property from the root process to
@@ -246,20 +244,23 @@ class PairRuNNer : public Pair {
  private:
   double cflength;    // Length conversion factor.
   double cfenergy;    // Energy conversion factor.
-  bool luse_prev_q;       // Use charges from previous timestep as initial guess for iterative qeq solvers.
-  bool lwrite_f_comm; // Write committee forces into f_comm array
-  bool lcheck_extrap; // Flag enabling checks for feature extrapolation
-  long max_extrap;     // Maximal number of allowed timesteps with feature extrapolations during the MD simulation
-  bool lshow_ew;      // Flag enabling output of extrapolation warnings to log file
-  long sum_ew_freq;    // Frequency where extrapolation warning summary is printed to log file
-  long reset_ew_freq;  // Frequency where extrapolation count is reseted to 0
-  long local_extrap_sum; // Sum of recorded extrapolations per process (being reseted at every extrapolation summary)
-  double cutoff;      // Max feature map cutoff.
+  bool
+      luse_prev_q;    // Use charges from previous timestep as initial guess for iterative qeq solvers.
+  bool lwrite_f_comm;    // Write committee forces into f_comm array
+  bool lcheck_extrap;    // Flag enabling checks for feature extrapolation
+  long
+      max_extrap;    // Maximal number of allowed timesteps with feature extrapolations during the MD simulation
+  bool lshow_ew;         // Flag enabling output of extrapolation warnings to log file
+  long sum_ew_freq;      // Frequency where extrapolation warning summary is printed to log file
+  long reset_ew_freq;    // Frequency where extrapolation count is reseted to 0
+  long
+      local_extrap_sum;    // Sum of recorded extrapolations per process (being reseted at every extrapolation summary)
+  double cutoff;    // Max feature map cutoff.
   double
       total_charge;    // The total charge of the structure being simulated. Must be 0 for periodic systems.
   char *directory;    // directory containing RuNNer potential files
   int *map;           // Mapping from atom types to elements
-  int nmax;    // Allocated size of per-atom arrays. This is usually
+  int nmax;           // Allocated size of per-atom arrays. This is usually
       // max(nlocal + nghost) across all processes, with some padding that can become quite large.
 
   // Additional per-atom arrays
@@ -268,9 +269,9 @@ class PairRuNNer : public Pair {
   bool lhirshfeld_vdw;
   bool ltwo_body;
   int nnp_generation;
-  int num_committee_members; // specified in input.nn
-  int commstyle;    // communication flag for forward and reverse
-                    // communication
+  int num_committee_members;    // specified in input.nn
+  int commstyle;                // communication flag for forward and reverse
+                                // communication
   const int COMMATCHARGE = 1;
   const int COMMELECNEGATIVITY = 2;
   const int COMMHIRSHVOLUME = 3;

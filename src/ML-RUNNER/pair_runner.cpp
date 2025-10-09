@@ -341,21 +341,21 @@ void PairRuNNer::compute(int eflag, int vflag)
     double two_body_energy = 0.0;
 
     double *two_body_forces = new double[ntotal * 3];
-      memset(two_body_forces, 0.0, ntotal * 3 * (sizeof *two_body_forces));
+    memset(two_body_forces, 0.0, ntotal * 3 * (sizeof *two_body_forces));
 
     double *two_body_d_energy_d_strain = new double[9];
-      memset(two_body_d_energy_d_strain, 0.0, 9 * (sizeof *two_body_d_energy_d_strain));
+    memset(two_body_d_energy_d_strain, 0.0, 9 * (sizeof *two_body_d_energy_d_strain));
 
     // Calculate two-body energies and forces
-    runner_interface_two_body(&nlocal, &nghost,
-                              &two_body_energy, two_body_forces, two_body_d_energy_d_strain);
-
+    runner_interface_two_body(&nlocal, &nghost, &two_body_energy, two_body_forces,
+                              two_body_d_energy_d_strain);
 
     for (int i = 0; i < num_committee_members; i++) {
       // Add two-body interactions to short-range results
       committee_energy[i] += two_body_energy;
 
-      for (ii = 0; ii < ntotal * 3; ii++) committee_force[ntotal * 3 * i + ii] += two_body_forces[ii];
+      for (ii = 0; ii < ntotal * 3; ii++)
+        committee_force[ntotal * 3 * i + ii] += two_body_forces[ii];
 
       for (ii = 0; ii < 9; ii++)
         committee_d_energy_d_strain[i * 9 + ii] += two_body_d_energy_d_strain[ii];
@@ -388,8 +388,8 @@ void PairRuNNer::compute(int eflag, int vflag)
 
         // Collect the charge predicted by the committee members into one global array.
         double *q_global = new double[natoms];
-        pack_atomic_property(rank, size, natoms, inum, ilist, tag, &committee_atomic_charge[nmax * i],
-                             q_global);
+        pack_atomic_property(rank, size, natoms, inum, ilist, tag,
+                             &committee_atomic_charge[nmax * i], q_global);
 
         // long-range electrostatics variables
         double runner_elec_energy = 0.0;
@@ -415,10 +415,12 @@ void PairRuNNer::compute(int eflag, int vflag)
 
         // Broadcast and unpack electrostatic results back to each local
         // process.
-        unpack_local_atomic_properties(rank, size, natoms, inum, ilist, tag, 1, q_global, atomic_charge);
+        unpack_local_atomic_properties(rank, size, natoms, inum, ilist, tag, 1, q_global,
+                                       atomic_charge);
 
         memset(de_dq, 0.0, ntotal * (sizeof *de_dq));
-        unpack_local_atomic_properties(rank, size, natoms, inum, ilist, tag, 1, de_dq_global, de_dq);
+        unpack_local_atomic_properties(rank, size, natoms, inum, ilist, tag, 1, de_dq_global,
+                                       de_dq);
 
         double *runner_elec_forces = new double[ntotal * 3];
         memset(runner_elec_forces, 0.0, ntotal * 3 * (sizeof *runner_elec_forces));
@@ -505,14 +507,15 @@ void PairRuNNer::compute(int eflag, int vflag)
 
         if (rank == 0) {
           // compute charges using qeq on root using global structure
-          runner_interface_compute_charges_4g(&natoms, &total_charge,
-                                              &electronegativity_global[0],
-                                              &hardness_global[0], &q_global[0], &luse_prev_q, i + 1);
+          runner_interface_compute_charges_4g(&natoms, &total_charge, &electronegativity_global[0],
+                                              &hardness_global[0], &q_global[0], &luse_prev_q,
+                                              i + 1);
         }
         MPI_Barrier(world);
 
         // unpack global charges from root to respective processes
-        unpack_local_atomic_properties(rank, size, natoms, inum, ilist, tag, 1, q_global, atomic_charge);
+        unpack_local_atomic_properties(rank, size, natoms, inum, ilist, tag, 1, q_global,
+                                       atomic_charge);
 
         // Communicate qeq charges from local atoms to ghost atoms
         // for screening calculation
@@ -665,17 +668,20 @@ void PairRuNNer::compute(int eflag, int vflag)
     int flag, cols, ghost;
     int idx = atom->find_custom_ghost("f_comm", flag, cols, ghost);
     double **f_comm = atom->darray[idx];
-    for (jj = 0; jj < 3; jj++) { // xyz components
-      for (i = 0; i < num_committee_members; i++) { // committee members
+    for (jj = 0; jj < 3; jj++) {                       // xyz components
+      for (i = 0; i < num_committee_members; i++) {    // committee members
         irunner = jj + i * ntotal * 3;
         memset(committee_storage, 0.0, nmax * (sizeof *committee_storage));
-        for (ii = 0; ii < ntotal; ii++) { // nlocal + nghost atoms
+        for (ii = 0; ii < ntotal; ii++) {    // nlocal + nghost atoms
           committee_storage[ii] = committee_force[irunner];
           irunner += 3;
         }
         commstyle = COMMCOMMITTEESTORAGE;
-        comm->reverse_comm(this); // communicate forces so that local atoms have full contribution
-        for (ii = 0; ii < ntotal; ii++) f_comm[ii][jj+i*3] = committee_storage[ii] / cfenergy * cflength; // copy into customd d2_array
+        comm->reverse_comm(
+            this);    // communicate forces so that local atoms have full contribution
+        for (ii = 0; ii < ntotal; ii++)
+          f_comm[ii][jj + i * 3] =
+              committee_storage[ii] / cfenergy * cflength;    // copy into customd d2_array
       }
     }
   }
@@ -692,7 +698,10 @@ void PairRuNNer::compute(int eflag, int vflag)
 
   // Charges if charge atom style is used
   if (q != NULL) {
-    memset(q, 0.0, nmax  * (sizeof *q)); // This array does not seem to get reset to zero every timestep by LAMMPS
+    memset(
+        q, 0.0,
+        nmax *
+            (sizeof *q));    // This array does not seem to get reset to zero every timestep by LAMMPS
     for (ii = 0; ii < ntotal; ii++) {
       for (jj = 0; jj < num_committee_members; jj++) {
         q[ii] += committee_atomic_charge[ii + jj * nmax] / num_committee_members;
@@ -742,10 +751,9 @@ void PairRuNNer::compute(int eflag, int vflag)
         // Write extrapolation message owned by rank 0
         if (len_extrap_msg > 0) {
 
-            // Write header for extrapolation warnings
-            utils::logmesg(lmp,
-                           "RuNNer2: Feature extrapolations on process 0 at timestep {:d}\n",
-                           timestep);
+          // Write header for extrapolation warnings
+          utils::logmesg(lmp, "RuNNer2: Feature extrapolations on process 0 at timestep {:d}\n",
+                         timestep);
           std::string extrap_msg = std::string(c_ptr_extrap_msg);
           utils::logmesg(lmp, extrap_msg);
         }
@@ -766,7 +774,8 @@ void PairRuNNer::compute(int eflag, int vflag)
             char *c_extrap_msg = nullptr;
             c_extrap_msg = new char[len_extrap_msg_array[irank]];
             MPI_Status mpi_stat;
-            MPI_Recv(c_extrap_msg, len_extrap_msg_array[irank], MPI_BYTE, irank, 0, world, &mpi_stat);
+            MPI_Recv(c_extrap_msg, len_extrap_msg_array[irank], MPI_BYTE, irank, 0, world,
+                     &mpi_stat);
 
             // Write header for extrapolation warnings
             utils::logmesg(lmp,
@@ -777,15 +786,12 @@ void PairRuNNer::compute(int eflag, int vflag)
             std::string extrap_msg = std::string(c_extrap_msg);
             utils::logmesg(lmp, extrap_msg);
             delete[] c_extrap_msg;
-
           }
-
         }
 
       } else if (len_extrap_msg > 0) {
 
         MPI_Send(c_ptr_extrap_msg, len_extrap_msg, MPI_BYTE, 0, 0, world);
-
       }
 
       c_ptr_extrap_msg = nullptr;
@@ -800,9 +806,7 @@ void PairRuNNer::compute(int eflag, int vflag)
     // Sets the flag `lreset` to reset the total extrapolation count if the timestep
     // is a multiple of reset_ew_freq and larger than zero
     bool lreset = false;
-    if (reset_ew_freq > 0 && timestep % reset_ew_freq == 0 && timestep > 0) {
-      lreset = true;
-    }
+    if (reset_ew_freq > 0 && timestep % reset_ew_freq == 0 && timestep > 0) { lreset = true; }
 
     // Retrive the number of extrapolations during this timestep and during the whole simulation
     // on each process 1and reset the latter if `lreset` is true.
@@ -814,14 +818,16 @@ void PairRuNNer::compute(int eflag, int vflag)
 
     // Total number of extrapolation accumulated across all processes "..."
     long global_extrap_count_total = 0;
-    MPI_Reduce(&local_extrap_count_total, &global_extrap_count_total, 1, MPI_LONG, MPI_SUM, 0, world);
+    MPI_Reduce(&local_extrap_count_total, &global_extrap_count_total, 1, MPI_LONG, MPI_SUM, 0,
+               world);
 
     // Abort simulation if the total number of extrapolations across all processes exceeds `max_extrap`
     if (max_extrap > -1 && global_extrap_count_total > max_extrap && rank == 0) {
-      error->one(FLERR,
-                 "Maximal number of allowed extrapolations have been exceeded during the simulation!\n"
-                 "Current extrapolation count: {:10.3e}", double(global_extrap_count_total));
-
+      error->one(
+          FLERR,
+          "Maximal number of allowed extrapolations have been exceeded during the simulation!\n"
+          "Current extrapolation count: {:10.3e}",
+          double(global_extrap_count_total));
     }
 
     // Prints a summary of the recorded extrapolations at every intervall until the timestep is
@@ -885,7 +891,7 @@ void PairRuNNer::settings(int narg, char **arg)
   lshow_ew = false;
   sum_ew_freq = 0;
   reset_ew_freq = 0;
-  nextra = 1; // defaults to committee size of 1
+  nextra = 1;    // defaults to committee size of 1
 
   while (iarg < narg) {
     // set RuNNer potential directory
@@ -1019,29 +1025,29 @@ void PairRuNNer::init_style()
 
   // In the 2G case, this has a performance benefit when multiple MPI processes
   // are used.
-  if (nnp_generation == 2) no_virial_fdotr_compute = 0; // Overwrite default flag
+  if (nnp_generation == 2) no_virial_fdotr_compute = 0;    // Overwrite default flag
 
   // Error checking for output by compute pair command
-  if (nextra == num_committee_members){
+  if (nextra == num_committee_members) {
     // array for storing committee energies for output by compute pair command
     if (pvector) delete[] pvector;
     pvector = new double[nextra];
-  }
-  else
-  {
-    error->all(FLERR, "committee_size specification for pair style runner "
-      "inconsistent between lammps input and input.nn.");
+  } else {
+    error->all(FLERR,
+               "committee_size specification for pair style runner "
+               "inconsistent between lammps input and input.nn.");
   }
   // Error checking for custom f_comm per-atom array
   if (lwrite_f_comm) {
     int flag, cols, ghost;
     int idx = atom->find_custom_ghost("f_comm", flag, cols, ghost);
-    if (idx < 0 || ghost == 0) error->all(FLERR,
-      "f_comm array not correctly specified in fix for pair_style runner.");
-    if (flag != 1) error->all(FLERR,
-      "f_comm array needs to be of type double for pair_style runner.");
-    if (cols != num_committee_members * 3) error->all(FLERR,
-      "Not enough columns specified for f_comm array in fix for pair_style runner.");
+    if (idx < 0 || ghost == 0)
+      error->all(FLERR, "f_comm array not correctly specified in fix for pair_style runner.");
+    if (flag != 1)
+      error->all(FLERR, "f_comm array needs to be of type double for pair_style runner.");
+    if (cols != num_committee_members * 3)
+      error->all(FLERR,
+                 "Not enough columns specified for f_comm array in fix for pair_style runner.");
   }
 }
 
@@ -1248,7 +1254,7 @@ void PairRuNNer::pack_structure(int rank, int size, int natoms, int inum, int *i
     ztmp = x[i][2];
 
     // get atom ID of atom i
-    tag_minus_one = static_cast<int>(tag[i]) - 1; // tags start at 1
+    tag_minus_one = static_cast<int>(tag[i]) - 1;    // tags start at 1
     start = tag_minus_one * 3;
 
     // store at atom ID position of local array to get consistent order between timesteps
@@ -1283,8 +1289,8 @@ void PairRuNNer::pack_structure(int rank, int size, int natoms, int inum, int *i
   delete[] z_local;
 }
 
-void PairRuNNer::pack_atomic_property(int rank, int size, int natoms, int inum, int *ilist, tagint *tag,
-                                      double *local_property, double *&global_property)
+void PairRuNNer::pack_atomic_property(int rank, int size, int natoms, int inum, int *ilist,
+                                      tagint *tag, double *local_property, double *&global_property)
 {
   int i, ii;
   int tag_minus_one;
@@ -1312,7 +1318,8 @@ void PairRuNNer::pack_atomic_property(int rank, int size, int natoms, int inum, 
 }
 
 void PairRuNNer::unpack_local_atomic_properties(int rank, int size, int natoms, int inum,
-                                                int *ilist, tagint *tag, int nprop, double *&global_properties,
+                                                int *ilist, tagint *tag, int nprop,
+                                                double *&global_properties,
                                                 double *local_properties)
 {
   int i, ii, iprop;
@@ -1332,5 +1339,4 @@ void PairRuNNer::unpack_local_atomic_properties(int rank, int size, int natoms, 
       local_properties[i * nprop + iprop] = global_properties[start + iprop];
     }
   }
-
 }
