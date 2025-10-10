@@ -1,73 +1,66 @@
+# Enable Fortran language support
 enable_language(Fortran)
-find_package(RUNNER QUIET)
 
-if(RUNNER_FOUND)
-  set(DOWNLOAD_RUNNER_DEFAULT OFF)
-else()
-  set(DOWNLOAD_RUNNER_DEFAULT ON)
-endif()
-option(DOWNLOAD_RUNNER "Download the RUNNER library instead of using an already installed one" ${DOWNLOAD_RUNNER_DEFAULT})
-if(DOWNLOAD_RUNNER)
-  string(TOUPPER "${CMAKE_BUILD_TYPE}" BTYPE)
-  set(temp "F77 = ${CMAKE_Fortran_COMPILER}\nF90 = ${CMAKE_Fortran_COMPILER}\nF95 = ${CMAKE_Fortran_COMPILER}\n")
-  set(temp "${temp}CC=${CMAKE_C_COMPILER}\nCPLUSPLUS=${CMAKE_CXX_COMPILER}\nLINKER=${CMAKE_Fortran_COMPILER}\n")
-  if(CMAKE_Fortran_COMPILER_ID STREQUAL Intel)
-    set(temp "${temp}FPP=${CMAKE_Fortran_COMPILER} -E\nOPTIM=${CMAKE_Fortran_FLAGS_${BTYPE}}\n")
-    set(temp "${temp}DEFINES += -DGETARG_F2003 -DFORTRAN_UNDERSCORE\n")
-    set(temp "${temp}F95FLAGS += -fpp -free -fPIC\n")
-    set(temp "${temp}F77FLAGS += -fpp -fixed -fPIC\n")
-  elseif(CMAKE_Fortran_COMPILER_ID STREQUAL GNU)
-    set(temp "${temp}FPP=${CMAKE_Fortran_COMPILER} -E -x f95-cpp-input\nOPTIM=${CMAKE_Fortran_FLAGS_${BTYPE}}\n")
-    set(temp "${temp}DEFINES += -DGETARG_F2003 -DGETENV_F2003 -DGFORTRAN -DFORTRAN_UNDERSCORE\n")
-    set(temp "${temp}F95FLAGS += -x f95-cpp-input -ffree-line-length-none -ffree-form -fno-second-underscore -fPIC\n")
-    set(temp "${temp}F77FLAGS += -x f77-cpp-input -fno-second-underscore -fPIC\n")
-  else()
-    message(FATAL_ERROR "The ${CMAKE_Fortran_COMPILER_ID} Fortran compiler is not (yet) supported for building RUNNER")
-  endif()
-  set(temp "${temp}CFLAGS += -fPIC \nCPLUSPLUSFLAGS += -fPIC\nAR_ADD=src\n")
-  set(temp "${temp}MATH_LINKOPTS=")
-  foreach(flag ${BLAS_LIBRARIES})
-    set(temp "${temp} ${flag}")
-  endforeach()
-  foreach(flag ${LAPACK_LIBRARIES})
-    set(temp "${temp} ${flag}")
-  endforeach()
-  # Fix cmake crashing when MATH_LINKOPTS not set, required for e.g. recent Cray Programming Environment
-  set(temp "${temp} -L/_DUMMY_PATH_\n")
-  set(temp "${temp}PYTHON=python\nPIP=pip\nEXTRA_LINKOPTS=\n")
-  set(temp "${temp}HAVE_CP2K=0\nHAVE_VASP=0\nHAVE_TB=0\nHAVE_PRECON=1\nHAVE_LOTF=0\nHAVE_ONIOM=0\n")
-  set(temp "${temp}HAVE_LOCAL_E_MIX=0\nHAVE_QC=0\nHAVE_GAP=1\nHAVE_DESCRIPTORS_NONCOMMERCIAL=1\n")
-  set(temp "${temp}HAVE_TURBOGAP=0\nHAVE_QR=1\nHAVE_THIRDPARTY=0\nHAVE_FX=0\nHAVE_SCME=0\nHAVE_MTP=0\n")
-  set(temp "${temp}HAVE_MBD=0\nHAVE_TTM_NF=0\nHAVE_CH4=0\nHAVE_NETCDF4=0\nHAVE_MDCORE=0\nHAVE_ASAP=0\n")
-  set(temp "${temp}HAVE_CGAL=0\nHAVE_METIS=0\nHAVE_LMTO_TBE=0\nHAVE_SCALAPACK=0\n")
-  file(WRITE ${CMAKE_BINARY_DIR}/runner2.config "${temp}")
+# Option to force downloading RuNNer even if found
+option(DOWNLOAD_RUNNER "Force download and build of RuNNer" OFF)
 
-  message(STATUS "RUNNER download via git requested - we will build our own")
-  set(CMAKE_EP_GIT_REMOTE_UPDATE_STRATEGY CHECKOUT)
-  # RUNNER has no releases (except for a tag marking the end of Python 2 support). We use the current "public" branch
-  # The LAMMPS interface wrapper has a compatibility constant that is being checked at runtime.
+# Try to find an existing installation of RuNNer
+find_package(RuNNer QUIET)
+
+# If RuNNer is not found or a download is forced, use ExternalProject
+if(NOT RuNNer_FOUND OR DOWNLOAD_RUNNER)
+  message(STATUS "RuNNer not found or download forced. Building from source.")
+
+  # Include ExternalProject module
   include(ExternalProject)
-  ExternalProject_Add(runner2_build
-    GIT_REPOSITORY "https://github.com/libAtoms/QUIP/"
-    GIT_TAG origin/public
+
+  # Add any custom CMake variables required by the RuNNer build system here.
+  set(RUNNER_CMAKE_ARGS
+    -DUSE_MPI=ON
+    -DCMAKE_Fortran_FLAGS="-fPIC"
+    -DENABLE_TESTS=OFF
+  )
+
+  ExternalProject_Add(runner_build
+    GIT_REPOSITORY "git@gitlab.com:runner-suite/runner2.git"
+    GIT_TAG "main"
     GIT_SHALLOW YES
     GIT_PROGRESS YES
-    GIT_SUBMODULES "src/fox;src/GAP"
-    PATCH_COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/runner2.config <SOURCE_DIR>/arch/Makefile.lammps
-    CONFIGURE_COMMAND env QUIP_ARCH=lammps make config
-    BUILD_COMMAND env QUIP_ARCH=lammps make libquip
-    INSTALL_COMMAND ""
-    BUILD_IN_SOURCE YES
-    BUILD_BYPRODUCTS <SOURCE_DIR>/build/lammps/libquip.a
+
+    # Pass CMake arguments to RuNNer's build system
+    CMAKE_ARGS
+      -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+      -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+      -DCMAKE_Fortran_COMPILER=${CMAKE_Fortran_COMPILER}
+      -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/runner_install
+      ${RUNNER_CMAKE_ARGS}
+
+    # Define the build and install steps
+    BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR>
+    INSTALL_COMMAND ${CMAKE_COMMAND} --install <BINARY_DIR>
+
+    # Specify the location of the built library
+    BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/runner_install/RuNNer/lib/libRuNNer.a
   )
-  ExternalProject_get_property(runner2_build SOURCE_DIR)
-  add_library(LAMMPS::RUNNER UNKNOWN IMPORTED)
-  set_target_properties(LAMMPS::RUNNER PROPERTIES
-    IMPORTED_LOCATION "${SOURCE_DIR}/build/lammps/libquip.a"
-    INTERFACE_LINK_LIBRARIES "${LAPACK_LIBRARIES}")
-  target_link_libraries(lammps PRIVATE LAMMPS::RUNNER)
-  add_dependencies(LAMMPS::RUNNER runner2_build)
+
+  # Get the installation directory of the external project
+  ExternalProject_Get_Property(runner_build INSTALL_DIR)
+
+  # Create an IMPORTED library target for RuNNer
+  add_library(RuNNer::RuNNer UNKNOWN IMPORTED)
+  set_target_properties(RuNNer::RuNNer PROPERTIES
+    IMPORTED_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/runner_install/RuNNer/lib/libRuNNer.a"
+  )
+
+  # Add a dependency to ensure RuNNer is built before LAMMPS
+  add_dependencies(lammps runner_build)
+
+  # Link LAMMPS to the newly built RuNNer library
+  target_link_libraries(lammps PRIVATE RuNNer::RuNNer ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES})
+
 else()
-  find_package(RUNNER REQUIRED)
-  target_link_libraries(lammps PRIVATE RUNNER::RUNNER ${LAPACK_LIBRARIES})
+  # If RuNNer is found, link to the existing library
+  message(STATUS "Found RuNNer: ${RuNNer_LIBRARIES}")
+  target_link_libraries(lammps PRIVATE RuNNer::RuNNer ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES})
 endif()
