@@ -163,7 +163,6 @@ results in a decreased MPI scalability.
 - [x] The source code follows the LAMMPS formatting guidelines
 - [ ] Suitable new documentation files and/or updates to the existing docs are included
 - [ ] The added/updated documentation is integrated and tested with the documentation build system
-- [ ] The feature has been verified to work with the conventional build system
 - [x] The feature has been verified to work with the CMake based build system
 - [ ] Suitable tests have been added to the unittest tree.
 - [ ] A package specific README file has been included or updated
