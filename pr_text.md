@@ -57,13 +57,15 @@ passed through a machine-learning model, which yields atomic output quantities
 for further processing:
 
 - In a 2G-HDNNP, the output quantities are atomic energies. They are summed up to
-  yield the total energy of the system.
+  yield the total energy of the system. We label this contribution "short-range",
+  because it only depends on the local chemical environment of each atom.
 - In a 3G-HDNNP, we keep the prediction of atomic energies and add a second model
   which predicts atomic charges (the "electrostatic model"). We use
-  these charges to calculate an additional electrostatic energy contribution.
+  these charges to calculate an additional long-range electrostatic energy
+  contribution.
 - In a 4G-HDNNP, the electrostatic model predicts environment-dependent atomic
   electronegativities. Optionally, users can also predict element-specific or
-  environment-dependent atomic hardness values. These values are piped through
+  environment-dependent atomic hardness values. These values are run through
   a charge equilibration scheme, yielding atomic charges again. In a second step,
   these atomic charges are fed back into a 2G-HDNNP model, so that the predicted
   atomic energies contain a global descriptor in the form of the atomic charges.
@@ -80,13 +82,6 @@ stable in all our tests.
 In case the user requested a 2G-HDNNP, we allow calculation of the virial via
 `fdotr`. For potentials with long-range electrostatic contributions (3G, 4G) this
 is not possible.
-
-Our pair style can be requested in the LAMMPS input file like this:
-
-```
-pair_style runner dir ./ total_charge 0.0 committee_size 1
-pair_coeff * * 1 8  # H O
-```
 
 #### `compute` Routine - General Workflow
 We implement a single `compute` routine that manages the calculations for all
@@ -151,7 +146,7 @@ for systems up to a few thousand atoms and it is near linear in most cases.
 
 ##### MPI
 2G-HDNNPs scale linearly with the number of MPI tasks because there is no
-additional communication necessary (apart from what LAMMPS does anyway).
+additional communication necessary (apart from what LAMMPS does).
 
 As is evident from the "General Workflow" section, 3G-HDNNPs and 4G-HDNNPs
 require a lot of MPI communication because we need global information for
