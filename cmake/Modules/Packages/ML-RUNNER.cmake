@@ -21,7 +21,8 @@ if(NOT RuNNer_FOUND OR DOWNLOAD_RUNNER)
   set(RUNNER_CMAKE_ARGS
     -DUSE_MPI=ON
     -DCMAKE_Fortran_FLAGS="-fPIC"
-    -DENABLE_TESTS=OFF
+    -DUSE_SHARED_LIB=yes
+    -DENABLE_TESTS=no
   )
 
   # Set the library file name based on the user's choice
@@ -35,7 +36,7 @@ if(NOT RuNNer_FOUND OR DOWNLOAD_RUNNER)
 
   ExternalProject_Add(runner_build
     GIT_REPOSITORY "git@gitlab.com:runner-suite/runner2.git"
-    GIT_TAG "main"
+    GIT_TAG "build-cmake-shared"
     GIT_SHALLOW YES
     GIT_PROGRESS YES
 
