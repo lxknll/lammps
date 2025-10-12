@@ -4,6 +4,9 @@ enable_language(Fortran)
 # Option to force downloading RuNNer even if found
 option(DOWNLOAD_RUNNER "Force download and build of RuNNer" OFF)
 
+# Option to build RuNNer as a shared library
+option(BUILD_RUNNER_SHARED "Build RuNNer as a shared/dynamic library." OFF)
+
 # Try to find an existing installation of RuNNer
 find_package(RuNNer QUIET)
 
@@ -20,6 +23,15 @@ if(NOT RuNNer_FOUND OR DOWNLOAD_RUNNER)
     -DCMAKE_Fortran_FLAGS="-fPIC"
     -DENABLE_TESTS=OFF
   )
+
+  # Set the library file name based on the user's choice
+  if(BUILD_RUNNER_SHARED)
+    set(RUNNER_LIB_NAME "libRuNNer.so")
+    message(STATUS "Will build RuNNer as a shared library.")
+  else()
+    set(RUNNER_LIB_NAME "libRuNNer.a")
+    message(STATUS "Will build RuNNer as a static library.")
+  endif()
 
   ExternalProject_Add(runner_build
     GIT_REPOSITORY "git@gitlab.com:runner-suite/runner2.git"
@@ -41,7 +53,7 @@ if(NOT RuNNer_FOUND OR DOWNLOAD_RUNNER)
     INSTALL_COMMAND ${CMAKE_COMMAND} --install <BINARY_DIR>
 
     # Specify the location of the built library
-    BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/runner_install/RuNNer/lib/libRuNNer.a
+    BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/runner_install/RuNNer/lib/${RUNNER_LIB_NAME}
   )
 
   # Get the installation directory of the external project
@@ -50,7 +62,7 @@ if(NOT RuNNer_FOUND OR DOWNLOAD_RUNNER)
   # Create an IMPORTED library target for RuNNer
   add_library(RuNNer::RuNNer UNKNOWN IMPORTED)
   set_target_properties(RuNNer::RuNNer PROPERTIES
-    IMPORTED_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/runner_install/RuNNer/lib/libRuNNer.a"
+    IMPORTED_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/runner_install/RuNNer/lib/${RUNNER_LIB_NAME}"
   )
 
   # Add a dependency to ensure RuNNer is built before LAMMPS
