@@ -4,10 +4,10 @@ enable_language(Fortran)
 # Build arguments.
 option(DOWNLOAD_RUNNER "Force download and build of RuNNer. If this is OFF\
   the arguments RUNNER_LIB_DIR, RUNNER_LIB_NAME and RUNNER_SHARED_LIB must\
-  be set to meaningful values." OFF
+  be set to meaningful values." ON
 )
 option(RUNNER_SHARED_LIB "Use pre-compiled shared/dynamic RuNNer library. Only \
-  considered if DOWNLOAD_RUNNER is OFF." OFF
+  considered if DOWNLOAD_RUNNER is OFF." ON
 )
 set(RUNNER_LIB_DIR "$ENV{HOME}/.local/lib" CACHE STRING "Root directory of a \
   pre-compiled RuNNer installation. Only considered if DOWNLOAD_RUNNER is OFF."
