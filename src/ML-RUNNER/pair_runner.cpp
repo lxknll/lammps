@@ -627,8 +627,9 @@ void PairRuNNer::compute(int eflag, int vflag)
         // Apply remaining force contributions from predicited
         // electronegativities and lagrange charges to
         // electrostatic forces.
-        runner_interface_evaluate_electrostatics_4g_part_2(&nlocal, &nghost, icomm_fortran,
-                                                           lagrange_charges, runner_elec_forces,
+        runner_interface_evaluate_electrostatics_4g_part_2(&nlocal, &nghost, icomm_fortran, lagrange_charges,
+                                                           &committee_atomic_charge[nmax * i], 
+                                                           runner_elec_forces,
                                                            runner_elec_d_energy_d_strain);
 
         // Add electrostatic interactions to short-range results
