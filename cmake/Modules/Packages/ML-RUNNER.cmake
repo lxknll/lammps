@@ -9,8 +9,8 @@ option(DOWNLOAD_RUNNER "Force download and build of RuNNer. If this is OFF\
 option(RUNNER_SHARED_LIB "Use pre-compiled shared/dynamic RuNNer library. Only \
   considered if DOWNLOAD_RUNNER is OFF." ON
 )
-set(RUNNER_LIB_DIR "$ENV{HOME}/.local/lib" CACHE STRING "Root directory of a \
-  pre-compiled RuNNer installation. Only considered if DOWNLOAD_RUNNER is OFF."
+set(RUNNER_LIB_DIR "$ENV{HOME}/.local/lib" CACHE STRING "Directory containing \
+  the RuNNer library. Only considered if DOWNLOAD_RUNNER is OFF."
 )
 set(RUNNER_LIB_NAME "libRuNNer" CACHE STRING "Name of the RuNNer library \
   (excluding file extension, this is controlled by RUNNER_SHARED_LIB). Only \

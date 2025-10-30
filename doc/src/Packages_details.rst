@@ -78,6 +78,7 @@ gives those details.
    * :ref:`MGPT <PKG-MGPT>`
    * :ref:`MISC <PKG-MISC>`
    * :ref:`ML-HDNNP <PKG-ML-HDNNP>`
+   * :ref:`ML-RUNNER <PKG-ML-RUNNER>`
    * :ref:`ML-IAP <PKG-ML-IAP>`
    * :ref:`ML-PACE <PKG-ML-PACE>`
    * :ref:`ML-POD <PKG-ML-POD>`
@@ -1744,6 +1745,14 @@ This package has :ref:`specific installation instructions <ml-hdnnp>` on the
 * ``lib/hdnnp/README``
 * :doc:`pair_style hdnnp <pair_hdnnp>`
 * ``examples/PACKAGES/hdnnp``
+
+----------
+
+.. _PKG-ML-RUNNER:
+
+ML-RUNNER package
+------------------
+HERE WE NEED TO ADD TEXT
 
 ----------
 

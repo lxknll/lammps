@@ -50,6 +50,7 @@ packages:
    * :ref:`MDI <mdi>`
    * :ref:`MISC <misc>`
    * :ref:`ML-HDNNP <ml-hdnnp>`
+   * :ref:`ML-RUNNER <ml-runner>`
    * :ref:`ML-IAP <mliap>`
    * :ref:`ML-PACE <ml-pace>`
    * :ref:`ML-POD <ml-pod>`

@@ -51,6 +51,7 @@ This is the list of packages that may require additional steps.
    * :ref:`MDI <mdi>`
    * :ref:`MISC <misc>`
    * :ref:`ML-HDNNP <ml-hdnnp>`
+   * :ref:`ML-RUNNER <ml-runner>`
    * :ref:`ML-IAP <mliap>`
    * :ref:`ML-PACE <ml-pace>`
    * :ref:`ML-POD <ml-pod>`
@@ -1494,6 +1495,34 @@ details please see ``lib/hdnnp/README`` and the `n2p2 build documentation
       .. versionchanged:: 10Sep2025
 
       The ML-HDNNP package no longer supports the the traditional make
+      build.  You need to build LAMMPS with CMake.
+
+----------
+
+.. _ml-runner:
+
+ML-RUNNER package
+----------------
+HERE WE NEED TO PUT TEXT
+
+.. tabs::
+
+   .. tab:: CMake build
+
+      .. code-block:: bash
+
+         -D DOWNLOAD_RUNNER=value   # Force download and automatic build of RuNNer.
+                                    # value = yes (default) or no
+         -D RUNNER_SHARED_LIB=value # Use pre-compiled dynamic RuNNer library.
+                                    # value = yes (default) or no
+         -D RUNNER_LIB_DIR=path     # Directory containing the RuNNer library.
+         -D RUNNER_LIB_NAME=name    # Filename of the RuNNer library (no suffix).
+
+   .. tab:: Traditional make
+
+      .. versionchanged:: 10Sep2025
+
+      The ML-RUNNER package does not support the traditional make
       build.  You need to build LAMMPS with CMake.
 
 ----------
