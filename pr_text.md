@@ -79,9 +79,12 @@ several files (program settings, potential-specific input files) on the root MPI
 process and broadcasts the contents. We found this to be very portable and
 stable in all our tests.
 
-In case the user requested a 2G-HDNNP, we allow calculation of the virial via
+In case the user requested a 2G-HDNNP, we calculate the virial via
 `fdotr`. For potentials with long-range electrostatic contributions (3G, 4G) this
-is not possible.
+is not possible, and we handle the virial calculation ourselves.
+
+We currently initialize a global interface object on the library side, so it is
+not possible to initialize our pair style multiple times without serious problems.
 
 #### `compute` Routine - General Workflow
 We implement a single `compute` routine that manages the calculations for all
