@@ -78,7 +78,8 @@ void runner_interface_evaluate_electrostatics_4g_part_1(int *nglobal, double *d_
 
 void runner_interface_evaluate_electrostatics_4g_part_2(int *nlocal, int *nghost,
                                                         int *committee_member_idx,
-                                                        double *lagrange_charges, double *forces,
+                                                        double *lagrange_charges,
+                                                        double *charges, double *forces,
                                                         double *d_energy_d_strain);
 
 void runner_interface_hirshfeld_vdw(int *nlocal, int *nghost, int *inum, int *ilist,

@@ -619,6 +619,7 @@ void PairRuNNer::compute(int eflag, int vflag)
         // electronegativities and lagrange charges to
         // electrostatic forces.
         runner_interface_evaluate_electrostatics_4g_part_2(&nlocal, &nghost, &i, lagrange_charges,
+                                                           &committee_atomic_charge[nmax * i], 
                                                            runner_elec_forces,
                                                            runner_elec_d_energy_d_strain);
 
