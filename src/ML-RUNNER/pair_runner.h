@@ -247,6 +247,7 @@ class PairRuNNer : public Pair {
   bool
       luse_prev_q;    // Use charges from previous timestep as initial guess for iterative qeq solvers.
   bool lwrite_f_comm;    // Write committee forces into f_comm array
+  bool lwrite_q_comm;    // Write committee charges into q_comm array
   bool lcheck_extrap;    // Flag enabling checks for feature extrapolation
   long
       max_extrap;    // Maximal number of allowed timesteps with feature extrapolations during the MD simulation

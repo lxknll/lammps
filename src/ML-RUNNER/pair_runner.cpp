@@ -681,8 +681,19 @@ void PairRuNNer::compute(int eflag, int vflag)
             this);    // communicate forces so that local atoms have full contribution
         for (ii = 0; ii < ntotal; ii++)
           f_comm[ii][jj + i * 3] =
-              committee_storage[ii] / cfenergy * cflength;    // copy into customd d2_array
+              committee_storage[ii] / cfenergy * cflength;    // copy into custom d2_array
       }
+    }
+  }
+
+  // write individual committee charges into q_comm array
+  if (lwrite_q_comm) {
+    int flag, cols, ghost;
+    int idx = atom->find_custom_ghost("q_comm", flag, cols, ghost);
+    double **q_comm = atom->darray[idx];
+    for (i = 0; i < num_committee_members; i++) {    // committee members
+      for (ii = 0; ii < ntotal; ii++) q_comm[ii][i] = committee_atomic_charge[ii + i * nmax];
+      // copy into custom d2_array
     }
   }
 
@@ -698,10 +709,7 @@ void PairRuNNer::compute(int eflag, int vflag)
 
   // Charges if charge atom style is used
   if (q != NULL) {
-    memset(
-        q, 0.0,
-        nmax *
-            (sizeof *q));    // This array does not seem to get reset to zero every timestep by LAMMPS
+    memset(q, 0.0, nmax * (sizeof *q));    // This array does not seem to get reset to zero every timestep by LAMMPS
     for (ii = 0; ii < ntotal; ii++) {
       for (jj = 0; jj < num_committee_members; jj++) {
         q[ii] += committee_atomic_charge[ii + jj * nmax] / num_committee_members;
@@ -885,6 +893,7 @@ void PairRuNNer::settings(int narg, char **arg)
   cfenergy = 1.0;
   luse_prev_q = false;
   lwrite_f_comm = false;
+  lwrite_q_comm = false;
   total_charge = 0.0;
   lcheck_extrap = false;
   max_extrap = 100;
@@ -913,6 +922,10 @@ void PairRuNNer::settings(int narg, char **arg)
     } else if (strcmp(arg[iarg], "f_comm") == 0) {
       if (iarg + 2 > narg) error->all(FLERR, "Illegal pair_style command");
       lwrite_f_comm = utils::logical(FLERR, arg[iarg + 1], false, lmp);
+      iarg += 2;
+    } else if (strcmp(arg[iarg], "q_comm") == 0) {
+      if (iarg + 2 > narg) error->all(FLERR, "Illegal pair_style command");
+      lwrite_q_comm = utils::logical(FLERR, arg[iarg + 1], false, lmp);
       iarg += 2;
     } else if (strcmp(arg[iarg], "committee_size") == 0) {
       if (iarg + 2 > narg) error->all(FLERR, "Illegal pair_style command");
@@ -1048,6 +1061,19 @@ void PairRuNNer::init_style()
     if (cols != num_committee_members * 3)
       error->all(FLERR,
                  "Not enough columns specified for f_comm array in fix for pair_style runner.");
+  }
+
+  // Error checking for custom q_comm per-atom array
+  if (lwrite_q_comm) {
+    int flag, cols, ghost;
+    int idx = atom->find_custom_ghost("q_comm", flag, cols, ghost);
+    if (idx < 0 || ghost == 0)
+      error->all(FLERR, "q_comm array not correctly specified in fix for pair_style runner.");
+    if (flag != 1)
+      error->all(FLERR, "q_comm array needs to be of type double for pair_style runner.");
+    if (cols != num_committee_members)
+      error->all(FLERR,
+                 "Not enough columns specified for q_comm array in fix for pair_style runner.");
   }
 }
 
