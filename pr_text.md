@@ -161,12 +161,12 @@ results in a decreased MPI scalability.
 <!--Please check the fields below as they are completed after the pull request has been submitted. Delete lines that don't apply-->
 
 - [ ] The feature or features in this pull request is complete
-- [x] Licensing information is complete
-- [x] Corresponding author information is complete
-- [x] The source code follows the LAMMPS formatting guidelines
+- [ ] Licensing information is complete
+- [ ] Corresponding author information is complete
+- [ ] The source code follows the LAMMPS formatting guidelines
 - [ ] Suitable new documentation files and/or updates to the existing docs are included
 - [ ] The added/updated documentation is integrated and tested with the documentation build system
-- [x] The feature has been verified to work with the CMake based build system
+- [ ] The feature has been verified to work with the CMake based build system
 - [ ] Suitable tests have been added to the unittest tree.
 - [ ] A package specific README file has been included or updated
 - [ ] One or more example input decks are included

@@ -1752,7 +1752,32 @@ This package has :ref:`specific installation instructions <ml-hdnnp>` on the
 
 ML-RUNNER package
 ------------------
-HERE WE NEED TO ADD TEXT
+**Contents:**
+A :doc:`pair_style runner <pair_runner>` command for the efficient evaluation of
+second-, third-, and fourth-generation high-dimensional neural network
+potentials (HDNNPs).
+
+.. _runner: https://www.theochem2.ruhr-uni-bochum.de/tc/software/runner.html.en
+
+To use this package you must have the `RuNNer <runner_>`_ library compiled on
+your system.
+
+**Authors:** Knut Nikolas Lausch, Alexander L. M. Knoll, Moritz R. Schäfer,
+             Gunnar Schmitz, Jörg Behler (Ruhr-University Bochum)
+
+**Install:**
+
+This package has :ref:`specific installation instructions <ml-runner>` on the
+:doc:`Build extras <Build_extras>` page.
+
+.. versionadded:: 31Oct2025
+
+**Supporting info:**
+
+* ``src/ML-RUNNER``: filenames -> commands
+* ``src/ML-RUNNER/README.md``
+* :doc:`pair_style runner <pair_runner>`
+* ``examples/RuNNer`` (see README)
 
 ----------
 

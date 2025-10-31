@@ -51,11 +51,11 @@ This is the list of packages that may require additional steps.
    * :ref:`MDI <mdi>`
    * :ref:`MISC <misc>`
    * :ref:`ML-HDNNP <ml-hdnnp>`
-   * :ref:`ML-RUNNER <ml-runner>`
    * :ref:`ML-IAP <mliap>`
    * :ref:`ML-PACE <ml-pace>`
    * :ref:`ML-POD <ml-pod>`
    * :ref:`ML-QUIP <ml-quip>`
+   * :ref:`ML-RUNNER <ml-runner>`
    * :ref:`MOLFILE <molfile>`
    * :ref:`NETCDF <netcdf>`
    * :ref:`OPENMP <openmp>`
@@ -1503,7 +1503,16 @@ details please see ``lib/hdnnp/README`` and the `n2p2 build documentation
 
 ML-RUNNER package
 ----------------
-HERE WE NEED TO PUT TEXT
+To build with this package you need the external
+`RuNNer https://www.theochem2.ruhr-uni-bochum.de/tc/software/runner.html.en`_
+library. By default, the LAMMPS build process automatically downloads and
+compiles the latest version of `RuNNer`. Alternatively, you may choose the
+path and name of a manually compiled RuNNer library. Please see the box below for
+a detailed list of CMake build options. 
+
+In case of manual compilation, RuNNer offers a make and cmake-based build system.
+Please refer to the RuNNer documentation for detailed build options of the
+library itself.
 
 .. tabs::
 
@@ -1513,17 +1522,20 @@ HERE WE NEED TO PUT TEXT
 
          -D DOWNLOAD_RUNNER=value   # Force download and automatic build of RuNNer.
                                     # value = yes (default) or no
-         -D RUNNER_SHARED_LIB=value # Use pre-compiled dynamic RuNNer library.
+         -D RUNNER_LIB_DIR=path     # Directory containing a manually compiled
+                                    # RuNNer library. Only considered if
+                                    # `DOWNLOAD_RUNNER=no`.
+                                    # value = $ENV{HOME}/.local/lib (default)
+         -D RUNNER_LIB_NAME=name    # Filename without suffix of the RuNNer
+                                    # library in `RUNNER_LIB_DIR`.
+                                    # value = libRuNNer (default)
+         -D RUNNER_SHARED_LIB=value # Whether we look for the dynamic (.so, default)
+                                    # or static (.a) library in `RUNNER_LIB_DIR`.
                                     # value = yes (default) or no
-         -D RUNNER_LIB_DIR=path     # Directory containing the RuNNer library.
-         -D RUNNER_LIB_NAME=name    # Filename of the RuNNer library (no suffix).
 
    .. tab:: Traditional make
-
-      .. versionchanged:: 10Sep2025
-
       The ML-RUNNER package does not support the traditional make
-      build.  You need to build LAMMPS with CMake.
+      build. You need to build LAMMPS with CMake.
 
 ----------
 

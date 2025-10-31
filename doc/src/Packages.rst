@@ -324,7 +324,7 @@ whether an extra library is needed to build and use the package:
      - ``PACKAGES/hdnnp``
      - ext
    * - :ref:`ML-RUNNER <PKG-ML-RUNNER>`
-     - High-dimensional neural network potentials using RuNNer
+     - Second-, third-, and fourth-generation high-dimensional neural network potentials
      - :doc:`pair_style runner <pair_runner>`
      - ``PACKAGES/runner``
      - ext
