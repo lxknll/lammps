@@ -123,18 +123,21 @@ implemented generations. The program sequence runs like this:
 
 #### Committee treatment
 All implemented methods support the prediction of multiple MLPs with different
-parameters. This so-called committee approach is a very intuitive error metric
+parameters. This so-called committee approach is an intuitive error metric
 and helpful for active learning. It is very efficient, as committee members must
 always share the same feature vector for each atom.
 
-Many of our library routines exploit this fact. However, some calculation steps
-must happen serially with respect to the committee members. These are:
+Many of our library routines exploit this fact by reusing all calculation results
+that are shared between committee members. However, some calculation steps
+must happen one committee member after the other. These are:
 
 - the Hirshfeld vdW calculation
 - the 3G-HDNNP long-range electrostatic calculation
 - the 4G-HDNNP QEq step and the long-range electrostatic calculation. Please note
   that the short-range prediction step in between happens for all committee members
   at once again, which is why there are two separate loops over committee members.
+
+We do not use MPI parallelization across committee members.
 
 #### Computational Scaling and Parallelization
 All implemented methods scale linearly with the number of atoms. Depending on the
