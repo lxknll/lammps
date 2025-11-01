@@ -25,6 +25,8 @@ specifically high-dimensional neural network potentials (HDNNPs). See
 - we use `compute/energy` for optionally writing the energies of each committee
   member to a file.
 
+Knut Nikolas Lausch is the main person responsible for this PR.
+
 ### Related Issue(s)
 None
 
