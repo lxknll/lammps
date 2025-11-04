@@ -321,8 +321,9 @@ void PairRuNNer::compute(int eflag, int vflag)
 
       // Calculate dispersion energies and forces using Hirshfeld volumes
       // and volume gradients (stored on runner side)
-      runner_interface_hirshfeld_vdw(&nlocal, &nghost, &inum, ilist, icomm_fortran, hirshfeld_volume,
-                                     &vdw_energy, vdw_forces, vdw_d_energy_d_strain);
+      runner_interface_hirshfeld_vdw(&nlocal, &nghost, &inum, ilist, icomm_fortran,
+                                     hirshfeld_volume, &vdw_energy, vdw_forces,
+                                     vdw_d_energy_d_strain);
 
       // Add electrostatic interactions to short-range results
       committee_energy[i] += vdw_energy;
@@ -465,8 +466,8 @@ void PairRuNNer::compute(int eflag, int vflag)
         MPI_Allreduce(&de_dq_sum_local, &de_dq_sum_global, 1, MPI_DOUBLE, MPI_SUM, world);
 
         runner_interface_evaluate_electrostatics_3g_part_2(
-            &nlocal, &nghost, &natoms, icomm_fortran, &runner_elec_energy, runner_elec_forces, de_dq,
-            &de_dq_sum_global, runner_elec_d_energy_d_strain);
+            &nlocal, &nghost, &natoms, icomm_fortran, &runner_elec_energy, runner_elec_forces,
+            de_dq, &de_dq_sum_global, runner_elec_d_energy_d_strain);
 
         // Add electrostatic interactions to short-range results
         committee_energy[i] += runner_elec_energy - screening_energy;
@@ -626,8 +627,8 @@ void PairRuNNer::compute(int eflag, int vflag)
         // Apply remaining force contributions from predicited
         // electronegativities and lagrange charges to
         // electrostatic forces.
-        runner_interface_evaluate_electrostatics_4g_part_2(&nlocal, &nghost, icomm_fortran, lagrange_charges,
-                                                           runner_elec_forces,
+        runner_interface_evaluate_electrostatics_4g_part_2(&nlocal, &nghost, icomm_fortran,
+                                                           lagrange_charges, runner_elec_forces,
                                                            runner_elec_d_energy_d_strain);
 
         // Add electrostatic interactions to short-range results
@@ -717,7 +718,10 @@ void PairRuNNer::compute(int eflag, int vflag)
 
   // Charges if charge atom style is used
   if (q != NULL) {
-    memset(q, 0.0, nmax * (sizeof *q));    // This array does not seem to get reset to zero every timestep by LAMMPS
+    memset(
+        q, 0.0,
+        nmax *
+            (sizeof *q));    // This array does not seem to get reset to zero every timestep by LAMMPS
     for (ii = 0; ii < ntotal; ii++) {
       for (jj = 0; jj < num_committee_members; jj++) {
         q[ii] += committee_atomic_charge[ii + jj * nmax] / num_committee_members;
