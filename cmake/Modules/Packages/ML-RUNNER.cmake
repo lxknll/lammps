@@ -12,7 +12,7 @@ option(RUNNER_SHARED_LIB "Use pre-compiled shared/dynamic RuNNer library. Only \
 set(RUNNER_LIB_DIR "$ENV{HOME}/.local/lib" CACHE STRING "Directory containing \
   the RuNNer library. Only considered if DOWNLOAD_RUNNER is OFF."
 )
-set(RUNNER_LIB_NAME "libRuNNer" CACHE STRING "Name of the RuNNer library \
+set(RUNNER_LIB_NAME "libRuNNer_mpi" CACHE STRING "Name of the RuNNer library \
   (excluding file extension, this is controlled by RUNNER_SHARED_LIB). Only \
   considered if DOWNLOAD_RUNNER is OFF."
 )
@@ -23,15 +23,19 @@ if(DOWNLOAD_RUNNER)
   # Include ExternalProject module
   include(ExternalProject)
 
+  # Force using the static library. RuNNer's cmake build always produces libRuNNer_mpi.a.
+  if(BUILD_MPI)
+    set(RUNNER_LIB_FULL_NAME "libRuNNer_mpi.a")
+  else()
+    set(RUNNER_LIB_FULL_NAME "libRuNNer.a")
+  endif()  
+
   # Add any custom CMake variables required by the RuNNer build system here.
   set(RUNNER_CMAKE_ARGS
-    -DUSE_MPI=ON
+    -DUSE_MPI=${BUILD_MPI}
     -DCMAKE_Fortran_FLAGS="-fPIC"
     -DENABLE_TESTS=no
   )
-
-  # Force using the static library. RuNNer's cmake build always produces libRuNNer.a.
-  set(RUNNER_LIB_NAME "libRuNNer.a")
 
   ExternalProject_Add(runner_build
     GIT_REPOSITORY "git@gitlab.com:runner-suite/runner2.git"
@@ -53,13 +57,13 @@ if(DOWNLOAD_RUNNER)
     INSTALL_COMMAND ${CMAKE_COMMAND} --install <BINARY_DIR>
 
     # Specify the location of the built library
-    BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/runner_install/RuNNer/lib/${RUNNER_LIB_NAME}
+    BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/runner_install/RuNNer/lib/${RUNNER_LIB_FULL_NAME}
   )
 
   # Create an IMPORTED library target for RuNNer
   add_library(RuNNer::RuNNer STATIC IMPORTED)
   set_target_properties(RuNNer::RuNNer PROPERTIES
-    IMPORTED_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/runner_install/RuNNer/lib/${RUNNER_LIB_NAME}"
+    IMPORTED_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/runner_install/RuNNer/lib/${RUNNER_LIB_FULL_NAME}"
   )
 
   # Add a dependency to ensure RuNNer is built before the main target
