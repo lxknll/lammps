@@ -55,7 +55,7 @@ void runner_interface_calc_screening(int *nlocal, int *nghost, double *atomic_ch
                                      double *d_energy_d_strain);
 
 void runner_interface_evaluate_electrostatics_3g_part_2(int *nlocal, int *nghost, int *nglobal,
-                                                        int *committee_member_idx, double *energy,
+                                                        int icomm, double *energy,
                                                         double *forces, double *d_energy_d_q,
                                                         double *d_energy_d_q_sum_global,
                                                         double *d_energy_d_strain);
@@ -77,12 +77,12 @@ void runner_interface_evaluate_electrostatics_4g_part_1(int *nglobal, double *d_
                                                         double *lagrange_charges, int icomm);
 
 void runner_interface_evaluate_electrostatics_4g_part_2(int *nlocal, int *nghost,
-                                                        int *committee_member_idx,
+                                                        int icomm,
                                                         double *lagrange_charges, double *forces,
                                                         double *d_energy_d_strain);
 
 void runner_interface_hirshfeld_vdw(int *nlocal, int *nghost, int *inum, int *ilist,
-                                    int *committee_member_idx, double *hirsh_volumes,
+                                    int icomm, double *hirsh_volumes,
                                     double *energy, double *forces, double *d_energy_d_strain);
 
 void runner_interface_two_body(int *nlocal, int *nghost, double *energy, double *forces,

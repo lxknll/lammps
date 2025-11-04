@@ -302,6 +302,8 @@ void PairRuNNer::compute(int eflag, int vflag)
 
     for (int i = 0; i < num_committee_members; i++) {
 
+      int icomm_fortran = i + 1;
+
       double vdw_energy = 0.0;
 
       double *vdw_forces = new double[ntotal * 3];
@@ -319,7 +321,7 @@ void PairRuNNer::compute(int eflag, int vflag)
 
       // Calculate dispersion energies and forces using Hirshfeld volumes
       // and volume gradients (stored on runner side)
-      runner_interface_hirshfeld_vdw(&nlocal, &nghost, &inum, ilist, &i, hirshfeld_volume,
+      runner_interface_hirshfeld_vdw(&nlocal, &nghost, &inum, ilist, icomm_fortran, hirshfeld_volume,
                                      &vdw_energy, vdw_forces, vdw_d_energy_d_strain);
 
       // Add electrostatic interactions to short-range results
@@ -385,6 +387,8 @@ void PairRuNNer::compute(int eflag, int vflag)
       if (debug) std::cout << "RuNNer 3G long-range electrostatics" << std::endl;
 
       for (int i = 0; i < num_committee_members; i++) {
+
+        int icomm_fortran = i + 1;
 
         // Collect the charge predicted by the committee members into one global array.
         double *q_global = new double[natoms];
@@ -461,7 +465,7 @@ void PairRuNNer::compute(int eflag, int vflag)
         MPI_Allreduce(&de_dq_sum_local, &de_dq_sum_global, 1, MPI_DOUBLE, MPI_SUM, world);
 
         runner_interface_evaluate_electrostatics_3g_part_2(
-            &nlocal, &nghost, &natoms, &i, &runner_elec_energy, runner_elec_forces, de_dq,
+            &nlocal, &nghost, &natoms, icomm_fortran, &runner_elec_energy, runner_elec_forces, de_dq,
             &de_dq_sum_global, runner_elec_d_energy_d_strain);
 
         // Add electrostatic interactions to short-range results
@@ -492,6 +496,8 @@ void PairRuNNer::compute(int eflag, int vflag)
       //   - transfer charges back to each process (local and ghost atoms)
       for (int i = 0; i < num_committee_members; i++) {
 
+        int icomm_fortran = i + 1;
+
         // Collect electronegativities and hardness values from each process into
         // one structure on the root process for the computation of charges via
         // QeQ.
@@ -509,7 +515,7 @@ void PairRuNNer::compute(int eflag, int vflag)
           // compute charges using qeq on root using global structure
           runner_interface_compute_charges_4g(&natoms, &total_charge, &electronegativity_global[0],
                                               &hardness_global[0], &q_global[0], &luse_prev_q,
-                                              i + 1);
+                                              icomm_fortran);
         }
         MPI_Barrier(world);
 
@@ -544,6 +550,8 @@ void PairRuNNer::compute(int eflag, int vflag)
       //     contributions
       //   - calculate force contributions of dChi/dxyz and dHardness/dxyz.
       for (int i = 0; i < num_committee_members; i++) {
+
+        int icomm_fortran = i + 1;
 
         double screening_energy = 0.0;
         double *screening_forces = new double[ntotal * 3];
@@ -597,7 +605,7 @@ void PairRuNNer::compute(int eflag, int vflag)
           // electrostatic contribution from global de_dq
           runner_interface_evaluate_electrostatics_4g_part_1(
               &natoms, de_dq_global, &runner_elec_energy, elec_force_global,
-              runner_elec_d_energy_d_strain, lagrange_global, i + 1);
+              runner_elec_d_energy_d_strain, lagrange_global, icomm_fortran);
         }
 
         MPI_Barrier(world);
@@ -618,7 +626,7 @@ void PairRuNNer::compute(int eflag, int vflag)
         // Apply remaining force contributions from predicited
         // electronegativities and lagrange charges to
         // electrostatic forces.
-        runner_interface_evaluate_electrostatics_4g_part_2(&nlocal, &nghost, &i, lagrange_charges,
+        runner_interface_evaluate_electrostatics_4g_part_2(&nlocal, &nghost, icomm_fortran, lagrange_charges,
                                                            runner_elec_forces,
                                                            runner_elec_d_energy_d_strain);
 
