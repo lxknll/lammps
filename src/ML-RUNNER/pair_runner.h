@@ -83,6 +83,7 @@ class PairRuNNer : public Pair {
   int nnp_generation;
   int num_committee_members;    // specified in input.nn
   int commstyle;                // communication flag for forward and reverse communication
+  double e_field[3];        // electric field vector components
 };
 }    // namespace LAMMPS_NS
 #endif

@@ -185,7 +185,12 @@ PairRuNNer::PairRuNNer(LAMMPS *lmp) :
   lhirshfeld_vdw = false;
   ltwo_body = false;
 
+  e_field[0] = 0.0;
+  e_field[1] = 0.0;
+  e_field[2] = 0.0;
+
   if (atom->natoms > MAXSMALLINT / 4) error->all(FLERR, "Too many total atoms");
+
 }
 
 PairRuNNer::~PairRuNNer()
@@ -223,6 +228,10 @@ void PairRuNNer::compute(int eflag, int vflag)
   double **x = atom->x;
   double **f = atom->f;
   double *q = atom->q;
+
+  imageint *image = atom->image;
+  double unwrap[3];
+
   // Number of atoms owned by this process.
   int nlocal = atom->nlocal;
   // Number of ghost atoms on this process. Ghost atoms are atoms owned by another
@@ -509,8 +518,16 @@ void PairRuNNer::compute(int eflag, int vflag)
         for (j = 0; j < inum; j++) {
           ii = ilist[j];
           de_dq[ii] -= screening_de_dq[ii];
+
+          // Add electric field chain-rule contribution to de_dq
+          // Scale LAMMPS units to RuNNer internal units via cfenergy
+          domain->unmap(x[ii], image[ii], unwrap);
+          double e_dot_r = e_field[0] * unwrap[0] + e_field[1] * unwrap[1] + e_field[2] * unwrap[2];
+          de_dq[ii] -= (e_dot_r * cfenergy); 
+
           de_dq_sum_local += de_dq[ii];
         }
+
         double de_dq_sum_global = 0.0;
         MPI_Allreduce(&de_dq_sum_local, &de_dq_sum_global, 1, MPI_DOUBLE, MPI_SUM, world);
 
@@ -518,8 +535,49 @@ void PairRuNNer::compute(int eflag, int vflag)
             &nlocal, &nghost, &natoms, icomm_fortran, &runner_elec_energy,
             runner_elec_forces.data(), de_dq, &de_dq_sum_global, runner_elec_d_energy_d_strain);
 
-        // Add electrostatic interactions to short-range results
-        committee_energy[i] += runner_elec_energy - screening_energy;
+        // Calculate direct electric field potential energy and forces
+        // Energy is tallied over local atoms only to prevent double counting
+        double e_field_energy_lammps = 0.0;
+        for (ii = 0; ii < nlocal; ii++) {
+          domain->unmap(x[ii], image[ii], unwrap);
+          double e_dot_r = e_field[0] * unwrap[0] + e_field[1] * unwrap[1] + e_field[2] * unwrap[2];
+          e_field_energy_lammps -= atomic_charge[ii] * e_dot_r;
+        }
+
+        // Direct Lorentz force is added to ALL atoms (local + ghost)
+        // Convert LAMMPS force (q * E) to RuNNer force units: f_runner = f_lammps * cfenergy / cflength
+        double force_conv = cfenergy / cflength;
+        for (ii = 0; ii < nall; ii++) {
+          runner_elec_forces[ii * 3 + 0] += atomic_charge[ii] * e_field[0] * force_conv;
+          runner_elec_forces[ii * 3 + 1] += atomic_charge[ii] * e_field[1] * force_conv;
+          runner_elec_forces[ii * 3 + 2] += atomic_charge[ii] * e_field[2] * force_conv;
+        }
+
+        // Add the direct virial contribution from the Lorentz force (qE)
+        // Virial = - dE/dstrain. For F = qE, the contribution is - (qE_alpha * r_beta)
+        // This must be scaled by cfenergy for RuNNer's internal tally
+        for (ii = 0; ii < nlocal; ii++) {
+          domain->unmap(x[ii], image[ii], unwrap);
+          double q_i = atomic_charge[ii];
+          
+          // We update the 9-element strain derivative array (dE/deps)
+          // index 0=xx, 1=yy, 2=zz, 3=xy, 4=xz, 5=yz, etc. (RuNNer convention)
+          runner_elec_d_energy_d_strain[0] -= q_i * e_field[0] * unwrap[0] * cfenergy; // xx
+          runner_elec_d_energy_d_strain[4] -= q_i * e_field[1] * unwrap[1] * cfenergy; // yy
+          runner_elec_d_energy_d_strain[8] -= q_i * e_field[2] * unwrap[2] * cfenergy; // zz
+          
+          runner_elec_d_energy_d_strain[1] -= q_i * e_field[0] * unwrap[1] * cfenergy; // xy
+          runner_elec_d_energy_d_strain[2] -= q_i * e_field[0] * unwrap[2] * cfenergy; // xz
+          runner_elec_d_energy_d_strain[5] -= q_i * e_field[1] * unwrap[2] * cfenergy; // yz
+          
+          // If the backend expects a symmetric tensor, ensure you add the other off-diagonals
+          runner_elec_d_energy_d_strain[3] -= q_i * e_field[1] * unwrap[0] * cfenergy; // yx
+          runner_elec_d_energy_d_strain[6] -= q_i * e_field[2] * unwrap[0] * cfenergy; // zx
+          runner_elec_d_energy_d_strain[7] -= q_i * e_field[2] * unwrap[1] * cfenergy; // zy
+        }
+
+        // Add electrostatic interactions and field contributions to short-range results
+        committee_energy[i] += runner_elec_energy - screening_energy + (e_field_energy_lammps * cfenergy);
 
         for (ii = 0; ii < nall * 3; ii++)
           committee_force[nall * 3 * i + ii] += runner_elec_forces[ii] - screening_forces[ii];
@@ -943,6 +1001,12 @@ void PairRuNNer::settings(int narg, char **arg)
       if (iarg + 2 > narg) error->all(FLERR, "Illegal pair_style command");
       reset_ew_freq = utils::bnumeric(FLERR, arg[iarg + 1], false, lmp);
       iarg += 2;
+    } else if (strcmp(arg[iarg], "efield") == 0) {
+      if (iarg + 4 > narg) error->all(FLERR, "Illegal pair_style command");
+      e_field[0] = utils::numeric(FLERR, arg[iarg + 1], false, lmp);
+      e_field[1] = utils::numeric(FLERR, arg[iarg + 2], false, lmp);
+      e_field[2] = utils::numeric(FLERR, arg[iarg + 3], false, lmp);
+      iarg += 4;
     } else
       error->all(FLERR, "Illegal pair_style command");
   }
