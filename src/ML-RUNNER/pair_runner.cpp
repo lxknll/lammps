@@ -482,6 +482,7 @@ void PairRuNNer::compute(int eflag, int vflag)
           runner_elec_energy = 0.0;
           std::fill(elec_force_global.begin(), elec_force_global.end(), 0.0);
           std::fill(runner_elec_d_energy_d_strain, runner_elec_d_energy_d_strain + 9, 0.0);
+          std::fill(de_dq_global.begin(), de_dq_global.end(), 0.0);
           // We do NOT zero de_dq_global; we need it for the electric field forces later.
         }
 
