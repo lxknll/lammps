@@ -477,13 +477,12 @@ void PairRuNNer::compute(int eflag, int vflag)
               &natoms, xyz_global.data(), &total_charge, lattice, &lperiodic, q_global.data(),
               &runner_elec_energy, elec_force_global.data(), de_dq_global.data(),
               runner_elec_d_energy_d_strain);
-          
+
           // Hack: disable electrostatics (1/2)
           runner_elec_energy = 0.0;
           std::fill(elec_force_global.begin(), elec_force_global.end(), 0.0);
           std::fill(runner_elec_d_energy_d_strain, runner_elec_d_energy_d_strain + 9, 0.0);
           std::fill(de_dq_global.begin(), de_dq_global.end(), 0.0);
-          // We do NOT zero de_dq_global; we need it for the electric field forces later.
         }
 
         MPI_Barrier(world);
@@ -520,6 +519,7 @@ void PairRuNNer::compute(int eflag, int vflag)
         screening_energy = 0.0;
         std::fill(screening_forces.begin(), screening_forces.end(), 0.0);
         std::fill(screening_d_energy_d_strain, screening_d_energy_d_strain + 9, 0.0);
+        std::fill(screening_de_dq, screening_de_dq + nall, 0.0);
 
         // Communicate screening de_dq from ghost atoms to local atoms
         commstyle = COMM_SCREENING_DEDQ;
@@ -534,7 +534,7 @@ void PairRuNNer::compute(int eflag, int vflag)
           // Scale LAMMPS units to RuNNer internal units via cfenergy
           domain->unmap(x[ii], image[ii], unwrap);
           double e_dot_r = e_field[0] * unwrap[0] + e_field[1] * unwrap[1] + e_field[2] * unwrap[2];
-          de_dq[ii] -= (e_dot_r * cfenergy); 
+          de_dq[ii] -= (e_dot_r * cfenergy);
 
           de_dq_sum_local += de_dq[ii];
         }
@@ -555,7 +555,7 @@ void PairRuNNer::compute(int eflag, int vflag)
           domain->unmap(x[ii], image[ii], unwrap);
           double q_i = atomic_charge[ii];
           e_field_energy_lammps -= q_i * (e_field[0]*unwrap[0] + e_field[1]*unwrap[1] + e_field[2]*unwrap[2]);
-          
+
           // Direct force (F = qE)
           runner_elec_forces[ii * 3 + 0] += q_i * e_field[0] * force_conv;
           runner_elec_forces[ii * 3 + 1] += q_i * e_field[1] * force_conv;
@@ -563,15 +563,14 @@ void PairRuNNer::compute(int eflag, int vflag)
 
           // Direct Virial ( -qE_alpha * r_beta )
           // We update the 9-element strain derivative array (dE/deps)
-          // index 0=xx, 1=yy, 2=zz, 3=xy, 4=xz, 5=yz, etc. (RuNNer convention)
           runner_elec_d_energy_d_strain[0] -= q_i * e_field[0] * unwrap[0] * cfenergy; // xx
           runner_elec_d_energy_d_strain[4] -= q_i * e_field[1] * unwrap[1] * cfenergy; // yy
           runner_elec_d_energy_d_strain[8] -= q_i * e_field[2] * unwrap[2] * cfenergy; // zz
-          
+
           runner_elec_d_energy_d_strain[1] -= q_i * e_field[0] * unwrap[1] * cfenergy; // xy
           runner_elec_d_energy_d_strain[2] -= q_i * e_field[0] * unwrap[2] * cfenergy; // xz
           runner_elec_d_energy_d_strain[5] -= q_i * e_field[1] * unwrap[2] * cfenergy; // yz
-          
+
           runner_elec_d_energy_d_strain[3] -= q_i * e_field[1] * unwrap[0] * cfenergy; // yx
           runner_elec_d_energy_d_strain[6] -= q_i * e_field[2] * unwrap[0] * cfenergy; // zx
           runner_elec_d_energy_d_strain[7] -= q_i * e_field[2] * unwrap[1] * cfenergy; // zy
