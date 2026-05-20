@@ -188,6 +188,7 @@ PairRuNNer::PairRuNNer(LAMMPS *lmp) :
   e_field[0] = 0.0;
   e_field[1] = 0.0;
   e_field[2] = 0.0;
+  discard_electrostatics = false;
 
   if (atom->natoms > MAXSMALLINT / 4) error->all(FLERR, "Too many total atoms");
 
@@ -472,17 +473,33 @@ void PairRuNNer::compute(int eflag, int vflag)
         double runner_elec_d_energy_d_strain[9] = {0.0};
 
         if (rank == 0) {
+          // Replace NN-predicted charges with fixed values on root before running
+          // electrostatics. The overridden charges are broadcast back to all
+          // processes via unpack_local_atomic_properties below.
+          if (!override_q_map.empty()) {
+            for (int iatom = 0; iatom < natoms; iatom++) {
+              auto it = override_q_map.find(z_global[iatom]);
+              if (it != override_q_map.end()) q_global[iatom] = it->second;
+            }
+          }
+
           // Calculate long-range electrostatics on root using the global structure.
           runner_interface_evaluate_electrostatics_3g_part_1(
               &natoms, xyz_global.data(), &total_charge, lattice, &lperiodic, q_global.data(),
               &runner_elec_energy, elec_force_global.data(), de_dq_global.data(),
               runner_elec_d_energy_d_strain);
 
-          // Hack: disable electrostatics (1/2)
-          runner_elec_energy = 0.0;
-          std::fill(elec_force_global.begin(), elec_force_global.end(), 0.0);
-          std::fill(runner_elec_d_energy_d_strain, runner_elec_d_energy_d_strain + 9, 0.0);
-          std::fill(de_dq_global.begin(), de_dq_global.end(), 0.0);
+          // With fixed charges dQ/dr = 0, so Coulomb dE/dQ does not contribute
+          // via the chain rule. Electrostatic energy/forces/stress remain valid.
+          if (!override_q_map.empty()) {
+            std::fill(de_dq_global.begin(), de_dq_global.end(), 0.0);
+          }
+          if (discard_electrostatics) {
+            runner_elec_energy = 0.0;
+            std::fill(elec_force_global.begin(), elec_force_global.end(), 0.0);
+            std::fill(runner_elec_d_energy_d_strain, runner_elec_d_energy_d_strain + 9, 0.0);
+            std::fill(de_dq_global.begin(), de_dq_global.end(), 0.0);
+          }
         }
 
         MPI_Barrier(world);
@@ -515,11 +532,12 @@ void PairRuNNer::compute(int eflag, int vflag)
                                         screening_forces.data(), screening_de_dq,
                                         screening_d_energy_d_strain);
 
-        // Hack: Disable screening contributions
-        screening_energy = 0.0;
-        std::fill(screening_forces.begin(), screening_forces.end(), 0.0);
-        std::fill(screening_d_energy_d_strain, screening_d_energy_d_strain + 9, 0.0);
-        std::fill(screening_de_dq, screening_de_dq + nall, 0.0);
+        if (discard_electrostatics) {
+          screening_energy = 0.0;
+          std::fill(screening_forces.begin(), screening_forces.end(), 0.0);
+          std::fill(screening_d_energy_d_strain, screening_d_energy_d_strain + 9, 0.0);
+          std::fill(screening_de_dq, screening_de_dq + nall, 0.0);
+        }
 
         // Communicate screening de_dq from ghost atoms to local atoms
         commstyle = COMM_SCREENING_DEDQ;
@@ -530,11 +548,12 @@ void PairRuNNer::compute(int eflag, int vflag)
           ii = ilist[j];
           de_dq[ii] -= screening_de_dq[ii];
 
-          // Add electric field chain-rule contribution to de_dq
-          // Scale LAMMPS units to RuNNer internal units via cfenergy
+          // Add electric field chain-rule contribution to de_dq only when charges
+          // are environment-dependent (dQ/dr != 0). Fixed override charges have
+          // dQ/dr = 0, so this term vanishes.
           domain->unmap(x[ii], image[ii], unwrap);
           double e_dot_r = e_field[0] * unwrap[0] + e_field[1] * unwrap[1] + e_field[2] * unwrap[2];
-          de_dq[ii] -= (e_dot_r * cfenergy);
+          if (override_q_map.empty()) de_dq[ii] -= (e_dot_r * cfenergy);
 
           de_dq_sum_local += de_dq[ii];
         }
@@ -616,6 +635,14 @@ void PairRuNNer::compute(int eflag, int vflag)
           runner_interface_compute_charges_4g(
               &natoms, &total_charge, electronegativity_global.data(), hardness_global.data(),
               q_global.data(), &luse_prev_q, icomm_fortran);
+
+          // Replace QeQ charges with fixed values on root before broadcasting.
+          if (!override_q_map.empty()) {
+            for (int iatom = 0; iatom < natoms; iatom++) {
+              auto it = override_q_map.find(z_global[iatom]);
+              if (it != override_q_map.end()) q_global[iatom] = it->second;
+            }
+          }
         }
         MPI_Barrier(world);
 
@@ -660,6 +687,13 @@ void PairRuNNer::compute(int eflag, int vflag)
                                         &screening_energy, screening_forces.data(), screening_de_dq,
                                         screening_d_energy_d_strain);
 
+        if (discard_electrostatics) {
+          screening_energy = 0.0;
+          std::fill(screening_forces.begin(), screening_forces.end(), 0.0);
+          std::fill(screening_d_energy_d_strain, screening_d_energy_d_strain + 9, 0.0);
+          std::fill(screening_de_dq, screening_de_dq + nall, 0.0);
+        }
+
         // Communicate screening de_dq from ghost atoms to local atoms
         commstyle = COMM_SCREENING_DEDQ;
         comm->reverse_comm(this);
@@ -692,6 +726,13 @@ void PairRuNNer::compute(int eflag, int vflag)
           runner_interface_evaluate_electrostatics_4g_part_1(
               &natoms, de_dq_global.data(), &runner_elec_energy, elec_force_global.data(),
               runner_elec_d_energy_d_strain, lagrange_global.data(), icomm_fortran);
+
+          if (discard_electrostatics) {
+            runner_elec_energy = 0.0;
+            std::fill(elec_force_global.begin(), elec_force_global.end(), 0.0);
+            std::fill(runner_elec_d_energy_d_strain, runner_elec_d_energy_d_strain + 9, 0.0);
+            std::fill(lagrange_global.begin(), lagrange_global.end(), 0.0);
+          }
         }
 
         MPI_Barrier(world);
@@ -943,6 +984,8 @@ void PairRuNNer::settings(int narg, char **arg)
   sum_ew_freq = 0;
   reset_ew_freq = 0;
   nextra = 1;    // defaults to committee size of 1
+  discard_electrostatics = false;
+  override_q_map.clear();
 
   while (iarg < narg) {
     // set RuNNer potential directory
@@ -1007,6 +1050,20 @@ void PairRuNNer::settings(int narg, char **arg)
       e_field[1] = utils::numeric(FLERR, arg[iarg + 2], false, lmp);
       e_field[2] = utils::numeric(FLERR, arg[iarg + 3], false, lmp);
       iarg += 4;
+    } else if (strcmp(arg[iarg], "discard_electrostatics") == 0) {
+      if (iarg + 2 > narg) error->all(FLERR, "Illegal pair_style command");
+      discard_electrostatics = utils::logical(FLERR, arg[iarg + 1], false, lmp);
+      iarg += 2;
+    } else if (strcmp(arg[iarg], "override_q") == 0) {
+      if (iarg + 2 > narg) error->all(FLERR, "Illegal pair_style command");
+      int noverride = utils::inumeric(FLERR, arg[iarg + 1], false, lmp);
+      if (iarg + 2 + 2 * noverride > narg) error->all(FLERR, "Illegal pair_style command");
+      for (int k = 0; k < noverride; k++) {
+        int Z = utils::inumeric(FLERR, arg[iarg + 2 + 2 * k], false, lmp);
+        double q_override = utils::numeric(FLERR, arg[iarg + 2 + 2 * k + 1], false, lmp);
+        override_q_map[Z] = q_override;
+      }
+      iarg += 2 + 2 * noverride;
     } else
       error->all(FLERR, "Illegal pair_style command");
   }

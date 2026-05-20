@@ -11,7 +11,7 @@ Syntax
    pair_style runner keyword value ...
 
 * zero or more keyword/value pairs may be appended
-* keyword = *dir* or *cflength* or *cfenergy* or *f_comm* or *q_comm* or *committee_size* or *total_charge* or *use_prev_q* or *check_extrap* or *max_extrap* or *show_ew* or *sum_ew_freq* or *reset_ew_freq*
+* keyword = *dir* or *cflength* or *cfenergy* or *f_comm* or *q_comm* or *committee_size* or *total_charge* or *use_prev_q* or *check_extrap* or *max_extrap* or *show_ew* or *sum_ew_freq* or *reset_ew_freq* or *efield* or *discard_electrostatics* or *override_q*
 * value depends on the preceding keyword:
 
 .. list-table::
@@ -60,6 +60,15 @@ Syntax
    * - *reset_ew_freq*
      - N
      - Reset EW counters every N steps
+   * - *efield*
+     - Ex Ey Ez
+     - Apply a static external electric field (3G only)
+   * - *discard_electrostatics*
+     - *yes* or *no*
+     - Zero electrostatic energy, forces, stress, and dE/dQ contributions (3G/4G)
+   * - *override_q*
+     - N Z1 q1 ... ZN qN
+     - Override predicted charges with fixed values per atomic number (3G/4G)
 
 Examples
 --------
@@ -287,6 +296,49 @@ for the iterative Charge Equilibration (QEq) solver.  Setting this to
 starting point for the current time step, which can reduce the number of
 iterations required for convergence.
 
+Use *discard_electrostatics yes* to suppress electrostatic contributions
+to the energy, forces, stress, and the charge-derivative chain rule
+(dE/dQ).  The electrostatic calculation is still performed internally
+(required, for example, when a static electric field is applied), but
+its results are zeroed before being accumulated into the total energy and
+forces.  The default is *no*.
+
+Use *override_q* to fix atomic charges to element-specific constant
+values instead of using the network-predicted (3G) or QEq-determined
+(4G) charges.  The syntax is:
+
+.. code-block:: LAMMPS
+
+   override_q N Z1 q1 Z2 q2 ... ZN qN
+
+where *N* is the number of element/charge pairs and each *Zi* is an
+atomic number with corresponding fixed charge *qi*.  The override is
+applied on the root process to the global charge array before the
+electrostatic solver runs, so the Coulomb energy, forces, and stress are
+computed consistently using the fixed charges and are included in the
+simulation.  Because the fixed charges do not depend on atomic positions
+(dQ/dr = 0), the charge-derivative chain rule terms are zeroed
+automatically.
+
+**Example** — fix hydrogen charge to +0.4 e and oxygen to -0.8 e:
+
+.. code-block:: LAMMPS
+
+   pair_style runner dir "./potential" override_q 2 1 0.4 8 -0.8
+
+3G electric field
+^^^^^^^^^^^^^^^^^
+
+Use *efield Ex Ey Ez* to apply a static homogeneous electric field to a
+3G HDNNP simulation.  The field components are given in the LAMMPS
+length and energy units used in the simulation (convert with *cflength*
+and *cfenergy* if necessary).  The field contributes to the potential
+energy, atomic forces, and the virial via direct coupling to the
+environment-dependent charges.  The charge-derivative chain rule
+(dE_field/dQ * dQ/dr) is included automatically through the 3G
+electrostatic machinery.  When *override_q* is active the chain-rule
+term is suppressed because dQ/dr = 0 for fixed charges.
+
 .. admonition:: Periodicity limitations
    :class: note
 
@@ -357,6 +409,9 @@ The default options are:
 * *show_ew* = no
 * *sum_ew_freq* = 0
 * *reset_ew_freq* = 0
+* *efield* = 0.0 0.0 0.0
+* *discard_electrostatics* = no
+* *override_q* = (none)
 
 ----
 

@@ -23,6 +23,8 @@ PairStyle(runner,PairRuNNer);
 #include "lmptype.h"
 #include "pair.h"
 
+#include <unordered_map>
+
 namespace LAMMPS_NS {
 
 class PairRuNNer : public Pair {
@@ -83,7 +85,9 @@ class PairRuNNer : public Pair {
   int nnp_generation;
   int num_committee_members;    // specified in input.nn
   int commstyle;                // communication flag for forward and reverse communication
-  double e_field[3];        // electric field vector components
+  double e_field[3];                          // electric field vector components
+  bool discard_electrostatics;                // zero electrostatic energy/forces/stress/dE/dQ
+  std::unordered_map<int, double> override_q_map;    // atomic number -> fixed charge override
 };
 }    // namespace LAMMPS_NS
 #endif
