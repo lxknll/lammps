@@ -72,8 +72,9 @@ class PairRuNNer : public Pair {
   char *directory;            // directory containing RuNNer potential files
   int *map;                   // Mapping from atom types to elements
   int nmax;                   // Allocated size of per-atom arrays.
-  static int instances;       // count pair style instances, since we currently
-                              // only support one instance at a time
+  void *handle;               // Opaque handle of this instance's RuNNer
+                              // interface (runner_interface_create). Each
+                              // pair style instance owns an independent one.
 
   // Additional per-atom arrays
   double *atomic_charge, *hirshfeld_volume, *electronegativity, *lagrange_charges, *de_dq,

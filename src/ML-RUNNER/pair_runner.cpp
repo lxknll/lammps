@@ -37,74 +37,76 @@
 // External RuNNer library interface
 extern "C" {
 int runner_lammps_api_version();
-void runner_lammps_interface_init(const char *path, int *npath, double *cutoff, double *cfenergy,
+void *runner_interface_create();
+void runner_interface_destroy(void *handle);
+void runner_lammps_interface_init(void *handle, const char *path, int *npath, double *cutoff, double *cfenergy,
                                   double *cflength, int *nnp_generation, int *num_committee_members,
                                   bool *l_hirshfeld_vdw, bool *ltwo_body, bool *lcheck_extrap,
                                   int *rank, int *size);
 
-void runner_lammps_interface_transfer_atoms_and_neighbor_lists(
+void runner_lammps_interface_transfer_atoms_and_neighbor_lists(void *handle, 
     int *nlocal, int *nghost, int *atomic_numbers, int *inum, int *sum_num_neigh, int *ilist,
     int *num_neigh, int *first_neigh, int *neigh, double *lattice, double *xyz, bool *lperiodic,
     int *lstress);
 
-void runner_interface_short_range(int *nlocal, int *nghost, int *inum, int *nmax, int *ilist,
+void runner_interface_short_range(void *handle, int *nlocal, int *nghost, int *inum, int *nmax, int *ilist,
                                   double *energy, double *forces, double *d_energy_d_strain,
                                   double *hirsh_volumes, double *atomic_charges,
                                   double *elec_negativities, double *hardness);
 
-void runner_interface_evaluate_electrostatics_3g_part_1(int *num_atoms, double *xyz,
+void runner_interface_evaluate_electrostatics_3g_part_1(void *handle, int *num_atoms, double *xyz,
                                                         double *total_charge, double *lattice,
                                                         bool *lperiodic, double *atomic_charges,
                                                         double *energy, double *force_outer,
                                                         double *d_energy_d_q,
                                                         double *d_energy_d_strain);
 
-void runner_interface_reinitialize_electrostatics(int *num_atoms_global, double *pos_global,
+void runner_interface_reinitialize_electrostatics(void *handle, int *num_atoms_global, double *pos_global,
                                                   int *atomic_numbers_global);
 
-void runner_interface_calc_screening(int *nlocal, int *nghost, double *atomic_charges,
+void runner_interface_calc_screening(void *handle, int *nlocal, int *nghost, double *atomic_charges,
                                      double *energy, double *forces, double *de_dq,
                                      double *d_energy_d_strain);
 
-void runner_interface_evaluate_electrostatics_3g_part_2(int *nlocal, int *nghost, int *nglobal,
+void runner_interface_evaluate_electrostatics_3g_part_2(void *handle, int *nlocal, int *nghost, int *nglobal,
                                                         int icomm, double *energy, double *forces,
                                                         double *d_energy_d_q,
                                                         double *d_energy_d_q_sum_global,
                                                         double *d_energy_d_strain);
 
-void runner_interface_compute_charges_4g(int *num_atoms, double *total_charge,
+void runner_interface_compute_charges_4g(void *handle, int *num_atoms, double *total_charge,
                                          double *atomic_electronegativities,
                                          double *atomic_hardness, double *atomic_charges,
                                          bool *luse_prev_q, int icomm);
 
-void runner_interface_finalize_step();
+void runner_interface_finalize_step(void *handle);
 
-void runner_interface_short_range_4g(int *nlocal, int *nghost, int *inum, int *nmax, int *ilist,
+void runner_interface_short_range_4g(void *handle, int *nlocal, int *nghost, int *inum, int *nmax, int *ilist,
                                      double *, double *energy, double *forces,
                                      double *d_energy_d_strain, double *d_energy_d_q);
 
-void runner_interface_evaluate_electrostatics_4g_part_1(int *nglobal, double *d_energy_dq,
+void runner_interface_evaluate_electrostatics_4g_part_1(void *handle, int *nglobal, double *d_energy_dq,
                                                         double *energy, double *forces,
                                                         double *d_energy_d_strain,
                                                         double *lagrange_charges, int icomm);
 
-void runner_interface_evaluate_electrostatics_4g_part_2(int *nlocal, int *nghost, int icomm,
+void runner_interface_evaluate_electrostatics_4g_part_2(void *handle, int *nlocal, int *nghost, int icomm,
                                                         double *lagrange_charges, double *charges,
                                                         double *forces, double *d_energy_d_strain);
 
-void runner_interface_hirshfeld_vdw(int *nlocal, int *nghost, int *inum, int *ilist, int icomm,
+void runner_interface_hirshfeld_vdw(void *handle, int *nlocal, int *nghost, int *inum, int *ilist, int icomm,
                                     double *hirsh_volumes, double *energy, double *forces,
                                     double *d_energy_d_strain);
 
-void runner_interface_two_body(int *nlocal, int *nghost, double *energy, double *forces,
+void runner_interface_two_body(void *handle, int *nlocal, int *nghost, double *energy, double *forces,
                                double *d_energy_d_strain);
 
-void runner_interface_extrapolation_warnings(char **c_ptr_extrap_msg, int *len_extrap_msg,
+void runner_interface_extrapolation_warnings(void *handle, char **c_ptr_extrap_msg, int *len_extrap_msg,
                                              int *global_atom_ids, int *nlocal);
 
-void runner_interface_dealloc_extrapolation_warnings();
+void runner_interface_dealloc_extrapolation_warnings(void *handle);
 
-void runner_interface_extrapolation_count(int64_t *extraplation_count,
+void runner_interface_extrapolation_count(void *handle, int64_t *extraplation_count,
                                           int64_t *total_extrapolation_count, bool *lreset);
 }
 
@@ -124,16 +126,15 @@ enum {
 }
 
 // Initialize the static instance counter
-int PairRuNNer::instances = 0;
 
 PairRuNNer::PairRuNNer(LAMMPS *lmp) :
     Pair(lmp), directory(nullptr), map(nullptr), atomic_charge(nullptr),
     hirshfeld_volume(nullptr), electronegativity(nullptr), lagrange_charges(nullptr),
     de_dq(nullptr), screening_de_dq(nullptr), committee_storage(nullptr)
 {
-  // Sanity check: Prevent multiple instances due to static Fortran interface
-  if (instances > 0) { error->all(FLERR, "Only one pair runner instance can be active at a time"); }
-  instances++;
+  // Every pair style instance owns an independent RuNNer interface, so
+  // multiple instances (e.g. in hybrid setups) are supported.
+  handle = runner_interface_create();
 
   // HDNNP is not pairwise additive, due to three body terms
   single_enable = 0;
@@ -191,7 +192,8 @@ PairRuNNer::PairRuNNer(LAMMPS *lmp) :
 PairRuNNer::~PairRuNNer()
 {
   // Decrement instance counter
-  instances--;
+  runner_interface_destroy(handle);
+  handle = nullptr;
 
   // Deallocate member variables
   if (allocated) {
@@ -363,12 +365,12 @@ void PairRuNNer::compute(int eflag, int vflag)
                "Periodic systems must be charge neutral (total_charge = 0.0) when using pair_style "
                "runner.");
 
-  runner_lammps_interface_transfer_atoms_and_neighbor_lists(
+  runner_lammps_interface_transfer_atoms_and_neighbor_lists(handle, 
       &nlocal, &nghost, runner_types.data(), &inum, &num_neigh_sum, ilist, runner_num_neigh.data(),
       runner_first_neighbor.data(), runner_jlist.data(), lattice, &x[0][0], &lperiodic,
       &vflag_global);
 
-  runner_interface_short_range(&nlocal, &nghost, &inum, &nmax, ilist, committee_energy.data(),
+  runner_interface_short_range(handle, &nlocal, &nghost, &inum, &nmax, ilist, committee_energy.data(),
                                committee_force.data(), committee_d_energy_d_strain.data(),
                                committee_hirshfeld_volume.data(), committee_atomic_charge.data(),
                                committee_electronegativity.data(), committee_hardness.data());
@@ -392,7 +394,7 @@ void PairRuNNer::compute(int eflag, int vflag)
 
       // Calculate dispersion energies and forces using Hirshfeld volumes
       // and volume gradients (stored on runner side)
-      runner_interface_hirshfeld_vdw(&nlocal, &nghost, &inum, ilist, icomm_fortran,
+      runner_interface_hirshfeld_vdw(handle, &nlocal, &nghost, &inum, ilist, icomm_fortran,
                                      hirshfeld_volume, &vdw_energy, vdw_forces.data(),
                                      vdw_d_energy_d_strain);
 
@@ -413,7 +415,7 @@ void PairRuNNer::compute(int eflag, int vflag)
     double two_body_d_energy_d_strain[9] = {0.0};
 
     // Calculate two-body energies and forces
-    runner_interface_two_body(&nlocal, &nghost, &two_body_energy, two_body_forces.data(),
+    runner_interface_two_body(handle, &nlocal, &nghost, &two_body_energy, two_body_forces.data(),
                               two_body_d_energy_d_strain);
 
     for (int i = 0; i < num_committee_members; i++) {
@@ -441,7 +443,7 @@ void PairRuNNer::compute(int eflag, int vflag)
       // It is completely reallocated if the global
       // number of atoms changed. Otherwise, only the ordering
       // of atoms is updated.
-      runner_interface_reinitialize_electrostatics(&natoms, xyz_global.data(), z_global.data());
+      runner_interface_reinitialize_electrostatics(handle, &natoms, xyz_global.data(), z_global.data());
     }
 
     if (nnp_generation == 3) {
@@ -464,7 +466,7 @@ void PairRuNNer::compute(int eflag, int vflag)
 
         if (rank == 0) {
           // Calculate long-range electrostatics on root using the global structure.
-          runner_interface_evaluate_electrostatics_3g_part_1(
+          runner_interface_evaluate_electrostatics_3g_part_1(handle, 
               &natoms, xyz_global.data(), &total_charge, lattice, &lperiodic, q_global.data(),
               &runner_elec_energy, elec_force_global.data(), de_dq_global.data(),
               runner_elec_d_energy_d_strain);
@@ -496,7 +498,7 @@ void PairRuNNer::compute(int eflag, int vflag)
         double screening_d_energy_d_strain[9] = {0.0};
 
         // Apply screening
-        runner_interface_calc_screening(&nlocal, &nghost, atomic_charge, &screening_energy,
+        runner_interface_calc_screening(handle, &nlocal, &nghost, atomic_charge, &screening_energy,
                                         screening_forces.data(), screening_de_dq,
                                         screening_d_energy_d_strain);
 
@@ -514,7 +516,7 @@ void PairRuNNer::compute(int eflag, int vflag)
         double de_dq_sum_global = 0.0;
         MPI_Allreduce(&de_dq_sum_local, &de_dq_sum_global, 1, MPI_DOUBLE, MPI_SUM, world);
 
-        runner_interface_evaluate_electrostatics_3g_part_2(
+        runner_interface_evaluate_electrostatics_3g_part_2(handle, 
             &nlocal, &nghost, &natoms, icomm_fortran, &runner_elec_energy,
             runner_elec_forces.data(), de_dq, &de_dq_sum_global, runner_elec_d_energy_d_strain);
 
@@ -555,7 +557,7 @@ void PairRuNNer::compute(int eflag, int vflag)
 
         if (rank == 0) {
           // compute charges using qeq on root using global structure
-          runner_interface_compute_charges_4g(
+          runner_interface_compute_charges_4g(handle, 
               &natoms, &total_charge, electronegativity_global.data(), hardness_global.data(),
               q_global.data(), &luse_prev_q, icomm_fortran);
         }
@@ -576,7 +578,7 @@ void PairRuNNer::compute(int eflag, int vflag)
       std::vector<double> committee_d_energy_d_q(nall * num_committee_members, 0.0);
 
       // Perform short-range prediction for all committee members at once.
-      runner_interface_short_range_4g(&nlocal, &nghost, &inum, &nmax, ilist,
+      runner_interface_short_range_4g(handle, &nlocal, &nghost, &inum, &nmax, ilist,
                                       committee_atomic_charge.data(), committee_energy.data(),
                                       committee_force.data(), committee_d_energy_d_strain.data(),
                                       committee_d_energy_d_q.data());
@@ -598,7 +600,7 @@ void PairRuNNer::compute(int eflag, int vflag)
         double screening_d_energy_d_strain[9] = {0.0};
 
         // Apply screening
-        runner_interface_calc_screening(&nlocal, &nghost, &committee_atomic_charge[nmax * i],
+        runner_interface_calc_screening(handle, &nlocal, &nghost, &committee_atomic_charge[nmax * i],
                                         &screening_energy, screening_forces.data(), screening_de_dq,
                                         screening_d_energy_d_strain);
 
@@ -631,7 +633,7 @@ void PairRuNNer::compute(int eflag, int vflag)
         if (rank == 0) {
           // serial step determining lagrange charges and
           // electrostatic contribution from global de_dq
-          runner_interface_evaluate_electrostatics_4g_part_1(
+          runner_interface_evaluate_electrostatics_4g_part_1(handle, 
               &natoms, de_dq_global.data(), &runner_elec_energy, elec_force_global.data(),
               runner_elec_d_energy_d_strain, lagrange_global.data(), icomm_fortran);
         }
@@ -653,7 +655,7 @@ void PairRuNNer::compute(int eflag, int vflag)
         // Apply remaining force contributions from predicted
         // electronegativities and lagrange charges to
         // electrostatic forces.
-        runner_interface_evaluate_electrostatics_4g_part_2(
+        runner_interface_evaluate_electrostatics_4g_part_2(handle, 
             &nlocal, &nghost, icomm_fortran, lagrange_charges, &committee_atomic_charge[nmax * i],
             runner_elec_forces.data(), runner_elec_d_energy_d_strain);
 
@@ -772,7 +774,7 @@ void PairRuNNer::compute(int eflag, int vflag)
       char *c_ptr_extrap_msg = nullptr;
       int len_extrap_msg = 0;
 
-      runner_interface_extrapolation_warnings(&c_ptr_extrap_msg, &len_extrap_msg,
+      runner_interface_extrapolation_warnings(handle, &c_ptr_extrap_msg, &len_extrap_msg,
                                               global_atom_ids.data(), &nlocal);
 
       if (rank == 0) {
@@ -823,7 +825,7 @@ void PairRuNNer::compute(int eflag, int vflag)
 
     // Retrieve the number of extrapolations during this timestep and during the whole simulation
     // on each process and reset the latter if `lreset` is true.
-    runner_interface_extrapolation_count(&extrap_count_timestep, &local_extrap_count_total,
+    runner_interface_extrapolation_count(handle, &extrap_count_timestep, &local_extrap_count_total,
                                          &lreset);
 
     // Number of extrapolations recorded on this process (reset at every summary)
@@ -860,11 +862,11 @@ void PairRuNNer::compute(int eflag, int vflag)
     }
     // Deallocates the character array containing the extrapolation message on the Fortran side
     // and frees up the internal memory of the `ExtrapolationHandler` (see RuNNer 2 documentation)
-    runner_interface_dealloc_extrapolation_warnings();
+    runner_interface_dealloc_extrapolation_warnings(handle);
   }
 
   MPI_Barrier(world);
-  runner_interface_finalize_step();
+  runner_interface_finalize_step(handle);
 }
 
 void PairRuNNer::settings(int narg, char **arg)
@@ -948,7 +950,7 @@ void PairRuNNer::settings(int narg, char **arg)
   }
 
   // check if linked to the correct RuNNer library API version
-  if (runner_lammps_api_version() != 2)
+  if (runner_lammps_api_version() != 3)
     error->all(FLERR,
                "RuNNer LAMMPS wrapper API version is not compatible "
                "with this version of LAMMPS");
@@ -1016,7 +1018,7 @@ void PairRuNNer::init_style()
   int rank = comm->me;
   int size = comm->nprocs;
 
-  runner_lammps_interface_init(directory, &n_directory_len, &cutoff, &cfenergy, &cflength,
+  runner_lammps_interface_init(handle, directory, &n_directory_len, &cutoff, &cfenergy, &cflength,
                                &nnp_generation, &num_committee_members, &lhirshfeld_vdw, &ltwo_body,
                                &lcheck_extrap, &rank, &size);
 
