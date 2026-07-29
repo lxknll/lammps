@@ -329,9 +329,13 @@ This pair style is part of the ML-RUNNER package.  It is only enabled if
 LAMMPS was built with that package.  See the :doc:`Build package
 <Build_package>` doc page for more info.
 
-Currently, only one instance of ``pair_style runner`` can be initialized
-per simulation.  The style does not support the use of :doc:`pair_style
-hybrid <pair_hybrid>` where multiple ``runner`` instances are defined.
+Multiple instances of ``pair_style runner`` can be active at the same
+time, for example through :doc:`pair_style hybrid <pair_hybrid>`: every
+instance owns an independent RuNNer potential (its own ``input.nn``
+settings, weights, and neighbor lists), so different instances may even
+use entirely different models.  This requires a RuNNer library built
+with the instance-based (handle) interface, LAMMPS interface API
+version 3 or later.
 
 Related commands
 ----------------
