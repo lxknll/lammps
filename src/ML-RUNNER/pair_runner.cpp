@@ -815,12 +815,12 @@ void PairRuNNer::compute(int eflag, int vflag)
 
     // Number of extrapolation accumulated on this process during this this timestep
     bigint local_extrap_count_timestep = 0;
-    runner_interface_extrapolation_count(handle, &extrap_count_timestep);
+    runner_interface_extrapolation_count(handle, &local_extrap_count_timestep);
 
     // Number of extrapolations recorded globally during this timestep
     bigint global_extrap_count_timestep = 0;
-    MPI_Allreduce(&local_extrap_count_timestep, &global_extrap_count_timestep, 1, MPI_LMP_BIGINT,
-               MPI_SUM, world);
+    MPI_Reduce(&local_extrap_count_timestep, &global_extrap_count_timestep, 1, MPI_LMP_BIGINT,
+               MPI_SUM, 0, world);
     pvector[nextra - 1] = static_cast<double>(global_extrap_count_timestep);
 
     // Number of extrapolations recorded globally (printed in each extrapolation summary)
