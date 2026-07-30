@@ -106,8 +106,7 @@ void runner_interface_extrapolation_warnings(void *handle, char **c_ptr_extrap_m
 
 void runner_interface_dealloc_extrapolation_warnings(void *handle);
 
-void runner_interface_extrapolation_count(void *handle, int64_t *extraplation_count,
-                                          int64_t *total_extrapolation_count, bool *lreset);
+void runner_interface_extrapolation_count(void *handle, int64_t *extraplation_count);
 }
 
 using namespace LAMMPS_NS;
@@ -816,13 +815,7 @@ void PairRuNNer::compute(int eflag, int vflag)
 
     // Number of extrapolation accumulated on this process during this this timestep
     bigint local_extrap_count_timestep = 0;
-    // Total number of extrapolation accumulated on this process during the simulation
-    bigint local_extrap_count_total = 0; // Not needed anymore
-    bool lreset = false; // Not needed anymore
-    // Retrieve the number of extrapolations during this timestep and during the whole simulation
-    // on each process and reset the latter if `lreset` is true.
-    runner_interface_extrapolation_count(handle, &extrap_count_timestep, &local_extrap_count_total,
-                                         &lreset);
+    runner_interface_extrapolation_count(handle, &extrap_count_timestep);
 
     // Number of extrapolations recorded globally during this timestep
     bigint global_extrap_count_timestep = 0;
