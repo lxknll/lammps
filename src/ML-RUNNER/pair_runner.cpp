@@ -947,7 +947,7 @@ void PairRuNNer::settings(int narg, char **arg)
   if (lcheck_extrap) nextra += 1;
 
   // check if linked to the correct RuNNer library API version
-  if (runner_lammps_api_version() != 2)
+  if (runner_lammps_api_version() != 3)
     error->all(FLERR,
                "RuNNer LAMMPS wrapper API version is not compatible "
                "with this version of LAMMPS");
@@ -1023,11 +1023,10 @@ void PairRuNNer::init_style()
   // are used.
   if (nnp_generation == 2) no_virial_fdotr_compute = 0;    // Overwrite default flag
 
+  // Since we want to output the current extrapolation count to compute pair
+  if (lcheck_extrap) num_committee_members += 1; 
   // Error checking for output by compute pair command
-  if (
-    (!lcheck_extrap && nextra == num_committee_members)
-    || (lcheck_extrap && nextra == num_committee_members + 1)
-    ){
+  if (nextra == num_committee_members) {
     // array for storing committee energies for output by compute pair command
     if (pvector) delete[] pvector;
     pvector = new double[nextra];
