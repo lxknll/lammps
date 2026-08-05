@@ -185,6 +185,11 @@ training range.
   total EW count exceeds this value. Setting *max_extrap* to a negative
   number disables the termination threshold.
 * Use *reset_ew_freq* to reset the EW counters at specific intervals.
+* The EW count generated in the current time step can be extracted 
+  with the :doc:`compute pair <compute_pair>` command. For details,
+  see "Accessing Member Energies" in the "Committees" section.
+* In case of **Committees**, the extrapolations apply to all of its 
+  members, i.e. all members extrapolate beyond the training range.
 
 Committees
 ^^^^^^^^^^
@@ -231,6 +236,12 @@ The energies are stored in a global vector *e_comm* of length
 * ``c_e_comm[1]``: Potential energy of member 1
 * ``c_e_comm[2]``: Potential energy of member 2
 * ``c_e_comm[N]``: Potential energy of member N
+
+If extrapolation checks are turned on (i.e. ``check_extrap yes``), 
+the length of *e_comm* increases to *committee_size + 1* with the
+last element corresponding to the EW count generated in this timestep:
+
+* ``c_e_comm[N+1]``: EW count generated in this timestep
 
 **Accessing Member Forces and Charges**
 
