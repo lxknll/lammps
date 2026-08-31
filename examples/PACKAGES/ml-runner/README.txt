@@ -3,6 +3,10 @@ It runs a short NVT molecular dynamics simulation of 192 bulk water molecules.
 
 Files included:
 in.ml-runner.H2O             # LAMMPS input script for the NVT simulation
+in.ml-runner.H2O.single      # Single-instance run-0 reference for the multi-instance check
+in.ml-runner.H2O.multi       # Two pair_style runner instances via hybrid/overlay (run 0)
+check_multi_instance.sh      # Checks that two overlaid instances give exactly twice the
+                             # single-instance pair energy (instance independence)
 H2O.data                     # LAMMPS data file containing 64 bulk water molecules
 
 2G-H2O-HDNNP/                # Directory containing the 2G-HDNNP trained on bulk water reference data
@@ -15,3 +19,9 @@ To run this example, you must compile LAMMPS with the ML-RUNNER package enabled
 and the RuNNer library linked. Then, execute the following command:
 
 lmp -in in.ml-runner.H2O
+
+Every pair_style runner instance owns an independent RuNNer potential, so
+several instances can be combined through pair_style hybrid/overlay. To
+verify this on your build, run:
+
+./check_multi_instance.sh /path/to/lmp
