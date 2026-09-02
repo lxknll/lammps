@@ -1,0 +1,23 @@
+# Single-instance reference for in.ml-runner.H2O.multi.
+#
+# Evaluates the 2G water potential once (run 0). The multi-instance input
+# overlays the same potential twice, so its pair energy must be exactly
+# twice the value obtained here. See check_multi_instance.sh.
+
+units metal
+
+boundary p p p
+atom_style atomic
+read_data "H2O.data"
+
+##########################
+#   ML-RuNNer Settings   #
+##########################
+pair_style runner dir 2G-H2O-HDNNP cflength 1.889726124626 cfenergy 0.036749322175655
+pair_coeff * * 1 8
+
+thermo 1
+thermo_style custom step temp epair etotal fmax fnorm press
+thermo_modify format line "%8d %8.3f %15.8f %15.8f %9.4f %9.4f %9.2f"
+
+run 0
